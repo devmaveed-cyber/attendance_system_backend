@@ -1,0 +1,14 @@
+const ATTENDANCE_MARK_TYPES = ['checkIn', 'checkOut'];
+
+const DEFAULT_BRANCH_RADIUS_METERS = 120;
+const MAX_ALLOWED_ACCURACY_METERS = 80;
+
+// TEMP: set to false before production release.
+const ALLOW_PAST_DATE_ATTENDANCE = true;
+
+module.exports = {
+  ATTENDANCE_MARK_TYPES,
+  DEFAULT_BRANCH_RADIUS_METERS,
+  MAX_ALLOWED_ACCURACY_METERS,
+  ALLOW_PAST_DATE_ATTENDANCE,
+};

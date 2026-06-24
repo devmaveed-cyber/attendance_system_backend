@@ -1,0 +1,482 @@
+{
+  "info": {
+    "_postman_id": "attendance-system-backend-final",
+    "name": "Attendance System Backend",
+    "description": "Complete Postman collection for Attendance System Backend (20 APIs).\n\n**Setup:**\n1. Import this file in Postman\n2. `baseUrl` = `http://localhost:5000`\n3. Run **Login Admin** → `adminToken` auto-save\n4. Run **Create Branch** → `branchId` auto-save\n5. Run **Create Employee** → `employeeId` auto-save\n6. Run **Login Employee** → `employeeToken` auto-save\n\n**ID formats:** USR0000001 | GRP0000001 | BRN0000001 | EMP0000001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "employeeToken", "value": "", "type": "string" },
+    { "key": "groupId", "value": "GRP9999001", "type": "string" },
+    { "key": "branchId", "value": "", "type": "string" },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "employeeId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 — Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Server chal raha hai ya nahi — token ki zaroorat nahi."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 — Auth",
+      "item": [
+        {
+          "name": "Register Admin (First Setup)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"03001234567\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Pehla admin account banane ke liye."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.token) pm.collectionVariables.set('adminToken', res.data.token);",
+                  "if (res.data?.user?.userId) pm.collectionVariables.set('userId', res.data.user.userId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Admin login — dashboard APIs ke liye token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.token) pm.collectionVariables.set('adminToken', res.data.token);",
+                  "if (res.data?.user?.userId) pm.collectionVariables.set('userId', res.data.user.userId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login Employee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employee@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Employee login — mobile app / self attendance ke liye."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.token) pm.collectionVariables.set('employeeToken', res.data.token);",
+                  "if (res.data?.user?.userId) pm.collectionVariables.set('employeeId', res.data.user.userId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Logged-in user ki profile + allowed sections."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 — Groups (Admin)",
+      "item": [
+        {
+          "name": "List Groups",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/groups",
+            "description": "Saari groups — permissions/sections ke saath."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Group",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"HR Team\",\n  \"sections\": [\"dashboard\", \"attendance\", \"employees\", \"groups\", \"users\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/groups",
+            "description": "Nayi group — sidebar permissions set karna."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.group?.groupId) pm.collectionVariables.set('groupId', res.data.group.groupId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update Group",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"HR Team Updated\",\n  \"sections\": [\"dashboard\", \"attendance\", \"employees\"],\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/groups/{{groupId}}",
+            "description": "Group name, sections, ya active status update."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 — Users (Admin)",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/users",
+            "description": "Dashboard admin users list."
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dashboard User\",\n  \"email\": \"user@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"03001234567\",\n  \"groupId\": \"{{groupId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users",
+            "description": "Naya admin user — group assign karke."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"phone\": \"03009998877\",\n  \"groupId\": \"{{groupId}}\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "User update — name, phone, group, active."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 — Branches",
+      "item": [
+        {
+          "name": "List Branches",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/branches",
+            "description": "Saari branches — admin aur employee dono dekh sakte hain."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Branch (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Karachi Branch\",\n  \"address\": \"Clifton, Karachi\",\n  \"latitude\": 24.8607,\n  \"longitude\": 67.0011,\n  \"radiusMeters\": 120\n}"
+            },
+            "url": "{{baseUrl}}/api/branches",
+            "description": "Nayi branch — GPS location + geofence radius."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.branch?.branchId) pm.collectionVariables.set('branchId', res.data.branch.branchId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update Branch (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Karachi Branch Updated\",\n  \"address\": \"DHA Phase 5, Karachi\",\n  \"latitude\": 24.8138,\n  \"longitude\": 67.0299,\n  \"radiusMeters\": 150,\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/branches/{{branchId}}",
+            "description": "Branch location, name, radius update."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 — Employees (Admin)",
+      "item": [
+        {
+          "name": "List Employees",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/employees",
+            "description": "Saare employees list."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali Khan\",\n  \"email\": \"employee@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"03001234567\",\n  \"branchId\": \"{{branchId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/employees",
+            "description": "Naya employee — branch assign. ID: EMP0000001"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data?.employee?.userId) pm.collectionVariables.set('employeeId', res.data.employee.userId);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali Khan Updated\",\n  \"phone\": \"03009998877\",\n  \"branchId\": \"{{branchId}}\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/employees/{{employeeId}}",
+            "description": "Employee update — branch change, deactivate, etc."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 — Attendance",
+      "item": [
+        {
+          "name": "Today — Employee (Self)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{employeeToken}}" }],
+            "url": "{{baseUrl}}/api/attendance/today",
+            "description": "Employee apni aaj ki attendance dekhe."
+          },
+          "response": []
+        },
+        {
+          "name": "Today — Admin (Any Employee)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/today?employeeId={{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "today"],
+              "query": [{ "key": "employeeId", "value": "{{employeeId}}" }]
+            },
+            "description": "Dashboard se kisi employee ki aaj ki attendance."
+          },
+          "response": []
+        },
+        {
+          "name": "Overview — Dashboard Grid",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/overview?date=2026-06-23&branchId={{branchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "overview"],
+              "query": [
+                { "key": "date", "value": "2026-06-23", "description": "YYYY-MM-DD" },
+                { "key": "startDate", "value": "", "disabled": true },
+                { "key": "endDate", "value": "", "disabled": true },
+                { "key": "branchId", "value": "{{branchId}}" },
+                { "key": "search", "value": "" },
+                { "key": "includeInactive", "value": "false", "disabled": true }
+              ]
+            },
+            "description": "Dashboard grid — status: absent | checked_in | checked_out"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Check-In — Employee (GPS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"checkIn\",\n  \"latitude\": 24.8607,\n  \"longitude\": 67.0011,\n  \"accuracy\": 15\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/mark",
+            "description": "Mobile app — employee khud check-in. Geofence required."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Check-Out — Employee (GPS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{employeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"checkOut\",\n  \"latitude\": 24.8607,\n  \"longitude\": 67.0011,\n  \"accuracy\": 15\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/mark",
+            "description": "Mobile app — employee khud check-out."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Check-In — Admin Dashboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"type\": \"checkIn\"\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/mark-employee",
+            "description": "Dashboard se admin check-in mark kare. GPS not required."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Check-Out — Admin Dashboard",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"type\": \"checkOut\"\n}"
+            },
+            "url": "{{baseUrl}}/api/attendance/mark-employee",
+            "description": "Dashboard se admin check-out mark kare."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
