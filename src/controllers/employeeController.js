@@ -2,13 +2,20 @@ const employeeService = require('../services/employeeService');
 const bulkImportService = require('../services/bulkImportService');
 const ApiError = require('../utils/ApiError');
 
-const getEmployees = async (_req, res) => {
-  const employees = await employeeService.getAllEmployees();
+const getEmployees = async (req, res) => {
+  const page = Number.parseInt(req.query.page, 10) || 1;
+  const limit = Number.parseInt(req.query.limit, 10) || 25;
+  const search = req.query.search?.toString() || '';
+
+  const result = await employeeService.getEmployees({ page, limit, search });
 
   res.status(200).json({
     success: true,
-    count: employees.length,
-    data: { employees },
+    count: result.employees.length,
+    data: {
+      employees: result.employees,
+      pagination: result.pagination,
+    },
   });
 };
 

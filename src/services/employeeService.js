@@ -1,13 +1,68 @@
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { sanitizeEmployee } = require('../utils/userPresenter');
+const { buildPaginationMeta } = require('../utils/paginationUtils');
 const branchService = require('./branchService');
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildEmployeeSearchFilter = (search = '') => {
+  const filter = { accountRole: 'employee' };
+  const normalized = search.trim();
+
+  if (!normalized) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(normalized), 'i');
+  filter.$or = [
+    { _id: regex },
+    { name: regex },
+    { email: regex },
+    { empNo: regex },
+    { phone: regex },
+    { branchId: regex },
+    { branchName: regex },
+    { department: regex },
+    { jobPosition: regex },
+    { workingHours: regex },
+    { gender: regex },
+    { nationality: regex },
+    { instructorPermitNo: regex },
+    { company: regex },
+    { gearType: regex },
+    { instructorLicenseTypes: regex },
+    { hrCreatedBy: regex },
+    { manager: regex },
+  ];
+
+  return filter;
+};
+
+const getEmployees = async ({ page = 1, limit = 25, search = '' } = {}) => {
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.min(100, Math.max(1, limit));
+  const skip = (safePage - 1) * safeLimit;
+  const filter = buildEmployeeSearchFilter(search);
+
+  const [employees, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
+    User.countDocuments(filter),
+  ]);
+
+  return {
+    employees: employees.map(sanitizeEmployee),
+    pagination: buildPaginationMeta({
+      page: safePage,
+      limit: safeLimit,
+      total,
+    }),
+  };
+};
+
 const getAllEmployees = async () => {
-  const employees = await User.find({ accountRole: 'employee' }).sort({
-    createdAt: -1,
-  });
-  return employees.map(sanitizeEmployee);
+  const { employees } = await getEmployees({ page: 1, limit: 100 });
+  return employees;
 };
 
 const createEmployee = async ({
@@ -77,6 +132,7 @@ const updateEmployee = async (employeeId, payload) => {
 };
 
 module.exports = {
+  getEmployees,
   getAllEmployees,
   createEmployee,
   updateEmployee,
