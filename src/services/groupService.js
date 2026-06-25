@@ -1,4 +1,5 @@
 const Group = require('../models/Group');
+const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { APP_SECTIONS, normalizeSections } = require('../constants/appSections');
 const { sanitizeGroup } = require('../utils/userPresenter');
@@ -113,9 +114,35 @@ const updateGroup = async (groupId, payload) => {
   return sanitizeGroup(group);
 };
 
+const deleteGroup = async (groupId) => {
+  const group = await Group.findById(groupId);
+
+  if (!group) {
+    throw new ApiError(404, 'Group not found');
+  }
+
+  if (group.isSystem || group._id === FULL_ACCESS_GROUP_ID) {
+    throw new ApiError(400, 'System groups cannot be deleted');
+  }
+
+  const unassignResult = await User.updateMany(
+    { groupId: group._id, accountRole: { $ne: 'employee' } },
+    { $set: { groupId: '', groupName: '' } }
+  );
+
+  await Group.deleteOne({ _id: group._id });
+
+  return {
+    groupId: group._id,
+    name: group.name,
+    unassignedUserCount: unassignResult.modifiedCount,
+  };
+};
+
 module.exports = {
   getAllGroups,
   resolveActiveGroup,
   createGroup,
   updateGroup,
+  deleteGroup,
 };

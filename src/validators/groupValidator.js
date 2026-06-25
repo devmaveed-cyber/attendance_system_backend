@@ -37,8 +37,11 @@ const updateGroupRules = [
     .withMessage('isActive must be a boolean'),
 ];
 
+const deleteGroupRules = [groupIdRule];
+
 module.exports = {
   groupIdRule,
   createGroupRules,
   updateGroupRules,
+  deleteGroupRules,
 };

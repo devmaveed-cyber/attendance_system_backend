@@ -7,12 +7,12 @@ const { APP_SECTIONS } = require('../constants/appSections');
 const branchService = require('./branchService');
 
 const resolveAllowedSections = async (user) => {
-  if (user.accountRole === 'admin') {
-    return [...APP_SECTIONS];
-  }
-
   if (user.accountRole === 'employee') {
     return ['attendance'];
+  }
+
+  if (user.accountRole === 'admin' && !user.groupId?.trim()) {
+    return [...APP_SECTIONS];
   }
 
   if (!user.groupId?.trim()) {
@@ -60,6 +60,12 @@ const buildAuthPayload = async (user) => {
 };
 
 const register = async ({ name, email, password, phone }) => {
+  const env = require('../config/env');
+
+  if (!env.allowPublicRegister) {
+    throw new ApiError(403, 'Public registration is disabled');
+  }
+
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {

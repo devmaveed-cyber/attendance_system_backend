@@ -72,8 +72,10 @@ const markNfcAttendanceRules = [
 
 const correctAttendanceRules = [
   body('employeeId')
-    .matches(ID_PATTERN.EMPLOYEE)
-    .withMessage('Invalid employeeId format. Expected format: EMP1234567'),
+    .matches(EMPLOYEE_ID_PATTERN)
+    .withMessage(
+      'Invalid employeeId format. Expected format: EMP1234567 or USR1234567'
+    ),
   body('dateKey')
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('dateKey must be YYYY-MM-DD'),
@@ -104,8 +106,10 @@ const correctAttendanceRules = [
 
 const clearAttendanceRules = [
   body('employeeId')
-    .matches(ID_PATTERN.EMPLOYEE)
-    .withMessage('Invalid employeeId format. Expected format: EMP1234567'),
+    .matches(EMPLOYEE_ID_PATTERN)
+    .withMessage(
+      'Invalid employeeId format. Expected format: EMP1234567 or USR1234567'
+    ),
   body('dateKey')
     .matches(/^\d{4}-\d{2}-\d{2}$/)
     .withMessage('dateKey must be YYYY-MM-DD'),

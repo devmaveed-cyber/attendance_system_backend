@@ -4,6 +4,7 @@ const validate = require('../middleware/validate');
 const protect = require('../middleware/auth');
 const requireAdmin = require('../middleware/requireAdmin');
 const requireEmployee = require('../middleware/requireEmployee');
+const requireAnySection = require('../middleware/requireSection');
 const authController = require('../controllers/authController');
 const groupController = require('../controllers/groupController');
 const userController = require('../controllers/userController');
@@ -18,6 +19,7 @@ const {
 const {
   createGroupRules,
   updateGroupRules,
+  deleteGroupRules,
 } = require('../validators/groupValidator');
 const {
   userIdRule,
@@ -65,19 +67,37 @@ router.get('/auth/me', protect, asyncHandler(authController.getMe));
 
 router.use('/groups', protect, requireAdmin);
 
-router
-  .route('/groups')
-  .get(asyncHandler(groupController.getGroups))
-  .post(createGroupRules, validate, asyncHandler(groupController.createGroup));
+router.get(
+  '/groups',
+  requireAnySection('groups', 'users'),
+  asyncHandler(groupController.getGroups)
+);
+
+router.post(
+  '/groups',
+  requireAnySection('groups'),
+  createGroupRules,
+  validate,
+  asyncHandler(groupController.createGroup)
+);
 
 router.put(
   '/groups/:id',
+  requireAnySection('groups'),
   updateGroupRules,
   validate,
   asyncHandler(groupController.updateGroup)
 );
 
-router.use('/users', protect, requireAdmin);
+router.delete(
+  '/groups/:id',
+  requireAnySection('groups'),
+  deleteGroupRules,
+  validate,
+  asyncHandler(groupController.deleteGroup)
+);
+
+router.use('/users', protect, requireAdmin, requireAnySection('users'));
 
 router
   .route('/users')
@@ -93,11 +113,16 @@ router.put(
 
 router.use('/branches', protect);
 
-router.get('/branches', asyncHandler(branchController.getBranches));
+router.get(
+  '/branches',
+  requireAnySection('dashboard', 'branches', 'employees', 'nfcTags'),
+  asyncHandler(branchController.getBranches)
+);
 
 router.post(
   '/branches',
   requireAdmin,
+  requireAnySection('branches'),
   createBranchRules,
   validate,
   asyncHandler(branchController.createBranch)
@@ -106,12 +131,13 @@ router.post(
 router.put(
   '/branches/:id',
   requireAdmin,
+  requireAnySection('branches'),
   updateBranchRules,
   validate,
   asyncHandler(branchController.updateBranch)
 );
 
-router.use('/employees', protect, requireAdmin);
+router.use('/employees', protect, requireAdmin, requireAnySection('employees'));
 
 router
   .route('/employees')
@@ -129,6 +155,7 @@ router.use('/nfc-tags', protect);
 
 router.get(
   '/nfc-tags',
+  requireAnySection('nfcTags'),
   listNfcTagsRules,
   validate,
   asyncHandler(nfcTagController.getNfcTags)
@@ -137,6 +164,7 @@ router.get(
 router.post(
   '/nfc-tags',
   requireAdmin,
+  requireAnySection('nfcTags'),
   createNfcTagRules,
   validate,
   asyncHandler(nfcTagController.createNfcTag)
@@ -145,6 +173,7 @@ router.post(
 router.put(
   '/nfc-tags/:id',
   requireAdmin,
+  requireAnySection('nfcTags'),
   updateNfcTagRules,
   validate,
   asyncHandler(nfcTagController.updateNfcTag)
@@ -154,6 +183,7 @@ router.use('/attendance', protect);
 
 router.get(
   '/attendance/today',
+  requireAnySection('attendance'),
   todayAttendanceRules,
   validate,
   asyncHandler(attendanceController.getTodayRecord)
@@ -161,6 +191,7 @@ router.get(
 
 router.get(
   '/attendance/overview',
+  requireAnySection('attendance'),
   overviewAttendanceRules,
   validate,
   asyncHandler(attendanceController.getOverview)
@@ -177,6 +208,7 @@ router.post(
 router.put(
   '/attendance/correct',
   requireAdmin,
+  requireAnySection('attendance'),
   correctAttendanceRules,
   validate,
   asyncHandler(attendanceController.correctAttendance)
@@ -185,6 +217,7 @@ router.put(
 router.delete(
   '/attendance/correct',
   requireAdmin,
+  requireAnySection('attendance'),
   clearAttendanceRules,
   validate,
   asyncHandler(attendanceController.clearAttendance)
