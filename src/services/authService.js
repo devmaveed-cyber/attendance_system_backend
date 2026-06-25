@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const { signToken } = require('../utils/token');
 const { sanitizeUser } = require('../utils/userPresenter');
 const { APP_SECTIONS } = require('../constants/appSections');
+const branchService = require('./branchService');
 
 const resolveAllowedSections = async (user) => {
   if (user.accountRole === 'admin') {
@@ -26,14 +27,35 @@ const resolveAllowedSections = async (user) => {
   return group.sections.filter((section) => APP_SECTIONS.includes(section));
 };
 
+const resolveAssignedBranch = async (user) => {
+  if (user.accountRole !== 'employee' || !user.branchId?.trim()) {
+    return null;
+  }
+
+  try {
+    const branch = await branchService.resolveActiveBranch(user.branchId);
+    return {
+      branchId: branch._id,
+      name: branch.name,
+      latitude: branch.latitude,
+      longitude: branch.longitude,
+      radiusMeters: branch.radiusMeters,
+    };
+  } catch {
+    return null;
+  }
+};
+
 const buildAuthPayload = async (user) => {
   const token = signToken(user._id);
   const allowedSections = await resolveAllowedSections(user);
+  const assignedBranch = await resolveAssignedBranch(user);
 
   return {
     user: sanitizeUser(user),
     token,
     allowedSections,
+    assignedBranch,
   };
 };
 
@@ -77,10 +99,12 @@ const getProfile = async (userId) => {
   }
 
   const allowedSections = await resolveAllowedSections(user);
+  const assignedBranch = await resolveAssignedBranch(user);
 
   return {
     user: sanitizeUser(user),
     allowedSections,
+    assignedBranch,
   };
 };
 

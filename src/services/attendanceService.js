@@ -214,15 +214,7 @@ const markAttendanceNfc = async (
   }
 
   const tag = await nfcTagService.resolveActiveNfcTag({ nfcTagId, tagUid });
-  const employee = await resolveEmployeeForMarking(requester._id);
-
-  if (tag.branchId !== employee.branchId) {
-    throw new ApiError(
-      400,
-      'This NFC tag is not registered for your assigned branch.'
-    );
-  }
-
+  const employee = await resolveEmployee(requester._id);
   const branch = await branchService.resolveActiveBranch(tag.branchId);
   validateGeofence({ latitude, longitude, branch });
 
@@ -238,10 +230,15 @@ const markAttendanceNfc = async (
     dateKey: resolveAttendanceDateKey(dateKey),
   });
 
+  if (type === 'checkIn' && employee.branchId !== branch._id) {
+    employee.branchId = branch._id;
+    employee.branchName = branch.name;
+    await employee.save();
+  }
+
   await nfcTagService.touchLastScanned(tag._id);
 
-  const enrichedBranch = branchOverride ?? branch;
-  return enrichAttendanceRecord(record, enrichedBranch);
+  return enrichAttendanceRecord(record, branch);
 };
 
 const getTodayRecord = async (requester, employeeId) => {
