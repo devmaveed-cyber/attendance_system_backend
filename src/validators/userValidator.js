@@ -33,6 +33,10 @@ const updateUserRules = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean'),
+  body('password')
+    .optional()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
 ];
 
 module.exports = {

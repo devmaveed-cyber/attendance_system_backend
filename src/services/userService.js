@@ -63,6 +63,10 @@ const updateUser = async (userId, payload) => {
     user.groupName = group.name;
   }
 
+  if (payload.password !== undefined) {
+    user.password = payload.password;
+  }
+
   await user.save();
   return sanitizeUser(user);
 };

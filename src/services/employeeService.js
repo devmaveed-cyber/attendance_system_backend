@@ -68,6 +68,10 @@ const updateEmployee = async (employeeId, payload) => {
     employee.branchName = branch.name;
   }
 
+  if (payload.password !== undefined) {
+    employee.password = payload.password;
+  }
+
   await employee.save();
   return sanitizeEmployee(employee);
 };
