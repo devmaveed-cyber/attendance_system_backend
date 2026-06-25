@@ -1,40 +1,5 @@
 const attendanceService = require('../services/attendanceService');
 
-const markAttendance = async (req, res) => {
-  const record = await attendanceService.markAttendance(req.user, req.body);
-
-  res.status(200).json({
-    success: true,
-    message:
-      req.body.type === 'checkIn'
-        ? 'Check-in marked successfully'
-        : 'Check-out marked successfully',
-    data: { record },
-  });
-};
-
-const markEmployeeAttendance = async (req, res) => {
-  const record = await attendanceService.markAttendanceForEmployee(
-    req.body.employeeId,
-    {
-      type: req.body.type,
-      latitude: req.body.latitude,
-      longitude: req.body.longitude,
-      accuracy: req.body.accuracy,
-      skipGeofence: true,
-    }
-  );
-
-  res.status(200).json({
-    success: true,
-    message:
-      req.body.type === 'checkIn'
-        ? 'Employee check-in marked successfully'
-        : 'Employee check-out marked successfully',
-    data: { record },
-  });
-};
-
 const markNfcAttendance = async (req, res) => {
   const record = await attendanceService.markAttendanceNfc(req.user, req.body);
 
@@ -70,10 +35,32 @@ const getOverview = async (req, res) => {
   });
 };
 
+const correctAttendance = async (req, res) => {
+  const record = await attendanceService.correctAttendance(req.user, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: record
+      ? 'Attendance corrected successfully'
+      : 'Attendance record cleared successfully',
+    data: { record },
+  });
+};
+
+const clearAttendance = async (req, res) => {
+  const result = await attendanceService.clearAttendance(req.user, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: 'Attendance record deleted successfully',
+    data: result,
+  });
+};
+
 module.exports = {
-  markAttendance,
-  markEmployeeAttendance,
   markNfcAttendance,
   getTodayRecord,
   getOverview,
+  correctAttendance,
+  clearAttendance,
 };

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 const { generateCustomId, ID_PREFIX } = require('../utils/idGenerator');
-const { DEFAULT_BRANCH_RADIUS_METERS } = require('../constants/attendanceConstants');
+const {
+  DEFAULT_BRANCH_RADIUS_METERS,
+  DEFAULT_SHIFT_START,
+  DEFAULT_SHIFT_END,
+  DEFAULT_GRACE_MINUTES_LATE,
+} = require('../constants/attendanceConstants');
 
 const branchSchema = new mongoose.Schema(
   {
@@ -32,6 +37,22 @@ const branchSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    shiftStartTime: {
+      type: String,
+      default: DEFAULT_SHIFT_START,
+      trim: true,
+    },
+    shiftEndTime: {
+      type: String,
+      default: DEFAULT_SHIFT_END,
+      trim: true,
+    },
+    graceMinutesLate: {
+      type: Number,
+      default: DEFAULT_GRACE_MINUTES_LATE,
+      min: [0, 'Grace minutes cannot be negative'],
+      max: [120, 'Grace minutes cannot exceed 120'],
     },
   },
   { timestamps: true }

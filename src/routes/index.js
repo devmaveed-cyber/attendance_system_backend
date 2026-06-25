@@ -38,11 +38,11 @@ const {
   updateNfcTagRules,
 } = require('../validators/nfcTagValidator');
 const {
-  markAttendanceRules,
-  adminMarkEmployeeRules,
   todayAttendanceRules,
   overviewAttendanceRules,
   markNfcAttendanceRules,
+  correctAttendanceRules,
+  clearAttendanceRules,
 } = require('../validators/attendanceValidator');
 
 const router = express.Router();
@@ -167,14 +167,6 @@ router.get(
 );
 
 router.post(
-  '/attendance/mark',
-  requireEmployee,
-  markAttendanceRules,
-  validate,
-  asyncHandler(attendanceController.markAttendance)
-);
-
-router.post(
   '/attendance/mark-nfc',
   requireEmployee,
   markNfcAttendanceRules,
@@ -182,12 +174,20 @@ router.post(
   asyncHandler(attendanceController.markNfcAttendance)
 );
 
-router.post(
-  '/attendance/mark-employee',
+router.put(
+  '/attendance/correct',
   requireAdmin,
-  adminMarkEmployeeRules,
+  correctAttendanceRules,
   validate,
-  asyncHandler(attendanceController.markEmployeeAttendance)
+  asyncHandler(attendanceController.correctAttendance)
+);
+
+router.delete(
+  '/attendance/correct',
+  requireAdmin,
+  clearAttendanceRules,
+  validate,
+  asyncHandler(attendanceController.clearAttendance)
 );
 
 module.exports = router;

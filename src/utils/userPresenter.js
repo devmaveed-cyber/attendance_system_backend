@@ -33,6 +33,9 @@ const sanitizeBranch = (branch) => ({
   longitude: branch.longitude,
   radiusMeters: branch.radiusMeters,
   isActive: branch.isActive,
+  shiftStartTime: branch.shiftStartTime,
+  shiftEndTime: branch.shiftEndTime,
+  graceMinutesLate: branch.graceMinutesLate,
   createdAt: branch.createdAt,
   updatedAt: branch.updatedAt,
 });
@@ -68,6 +71,11 @@ const sanitizeAttendanceRecord = (record) => ({
   checkInNfcUid: record.checkInNfcUid,
   checkOutMethod: record.checkOutMethod,
   checkOutNfcUid: record.checkOutNfcUid,
+  correctedBy: record.correctedBy,
+  correctedByName: record.correctedByName,
+  correctionReason: record.correctionReason,
+  correctedAt: record.correctedAt,
+  isManualCorrected: Boolean(record.correctedAt),
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
 });

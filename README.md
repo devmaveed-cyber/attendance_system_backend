@@ -63,7 +63,7 @@ Import this file in Postman:
 3. Run **Login Admin** first — token auto-saves to `adminToken`
 4. Run **Login Employee** for employee APIs — saves `employeeToken`
 
-## API Endpoints (20 total)
+## API Endpoints (22 total)
 
 ### Health
 
@@ -115,10 +115,9 @@ Import this file in Postman:
 
 | Method | Endpoint                        | Access           | Description                    |
 |--------|---------------------------------|------------------|--------------------------------|
-| GET    | `/api/attendance/today`         | Employee / Admin | Today's record                 |
-| GET    | `/api/attendance/overview`      | Employee / Admin | Dashboard attendance grid      |
-| POST   | `/api/attendance/mark`          | Employee         | Self check-in/out (GPS)        |
-| POST   | `/api/attendance/mark-employee` | Admin            | Dashboard mark for employee    |
+| GET    | `/api/attendance/today`    | Employee / Admin | Today's record            |
+| GET    | `/api/attendance/overview` | Employee / Admin | Dashboard attendance grid |
+| POST   | `/api/attendance/mark-nfc` | Employee         | Check-in/out via NFC + GPS |
 
 ## Example Requests
 

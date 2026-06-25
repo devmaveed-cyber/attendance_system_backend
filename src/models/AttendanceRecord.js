@@ -38,14 +38,18 @@ const attendanceRecordSchema = new mongoose.Schema(
     checkOutAccuracy: Number,
     checkInMethod: {
       type: String,
-      enum: ['gps', 'nfc'],
+      enum: ['gps', 'nfc', 'manual'],
     },
     checkInNfcUid: String,
     checkOutMethod: {
       type: String,
-      enum: ['gps', 'nfc'],
+      enum: ['gps', 'nfc', 'manual'],
     },
     checkOutNfcUid: String,
+    correctedBy: String,
+    correctedByName: String,
+    correctionReason: String,
+    correctedAt: Date,
   },
   { timestamps: true }
 );

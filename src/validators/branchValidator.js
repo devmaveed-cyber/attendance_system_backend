@@ -1,5 +1,13 @@
 const { body, param } = require('express-validator');
 const { ID_PATTERN } = require('../utils/idGenerator');
+const { TIME_PATTERN } = require('../utils/shiftUtils');
+
+const timeFieldRule = (field) =>
+  body(field)
+    .optional()
+    .trim()
+    .matches(TIME_PATTERN)
+    .withMessage(`${field} must be in HH:mm format`);
 
 const branchIdRule = param('id')
   .matches(ID_PATTERN.BRANCH)
@@ -14,6 +22,12 @@ const createBranchRules = [
     .optional()
     .isFloat({ min: 10 })
     .withMessage('radiusMeters must be at least 10'),
+  timeFieldRule('shiftStartTime'),
+  timeFieldRule('shiftEndTime'),
+  body('graceMinutesLate')
+    .optional()
+    .isInt({ min: 0, max: 120 })
+    .withMessage('graceMinutesLate must be between 0 and 120'),
 ];
 
 const updateBranchRules = [
@@ -40,6 +54,12 @@ const updateBranchRules = [
     .optional()
     .isBoolean()
     .withMessage('isActive must be a boolean'),
+  timeFieldRule('shiftStartTime'),
+  timeFieldRule('shiftEndTime'),
+  body('graceMinutesLate')
+    .optional()
+    .isInt({ min: 0, max: 120 })
+    .withMessage('graceMinutesLate must be between 0 and 120'),
 ];
 
 module.exports = {
