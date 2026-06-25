@@ -5,6 +5,7 @@ const protect = require('../middleware/auth');
 const requireAdmin = require('../middleware/requireAdmin');
 const requireEmployee = require('../middleware/requireEmployee');
 const requireAnySection = require('../middleware/requireSection');
+const { excelUpload } = require('../middleware/upload');
 const authController = require('../controllers/authController');
 const groupController = require('../controllers/groupController');
 const userController = require('../controllers/userController');
@@ -143,6 +144,12 @@ router
   .route('/employees')
   .get(asyncHandler(employeeController.getEmployees))
   .post(createEmployeeRules, validate, asyncHandler(employeeController.createEmployee));
+
+router.post(
+  '/employees/bulk-import',
+  excelUpload.single('file'),
+  asyncHandler(employeeController.bulkImportEmployees)
+);
 
 router.put(
   '/employees/:id',

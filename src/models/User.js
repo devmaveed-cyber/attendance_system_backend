@@ -61,6 +61,75 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    empNo: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    jobPosition: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    workingHours: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    visaExpiryDate: {
+      type: Date,
+      default: null,
+    },
+    gender: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    nationality: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    instructorPermitNo: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    company: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    gearType: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    instructorLicenseTypes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    hrCreatedOn: {
+      type: Date,
+      default: null,
+    },
+    hrCreatedBy: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    manager: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   { timestamps: true }
 );

@@ -1,4 +1,6 @@
 const employeeService = require('../services/employeeService');
+const bulkImportService = require('../services/bulkImportService');
+const ApiError = require('../utils/ApiError');
 
 const getEmployees = async (_req, res) => {
   const employees = await employeeService.getAllEmployees();
@@ -30,8 +32,25 @@ const updateEmployee = async (req, res) => {
   });
 };
 
+const bulkImportEmployees = async (req, res) => {
+  if (!req.file?.buffer) {
+    throw new ApiError(400, 'Excel file is required');
+  }
+
+  const summary = await bulkImportService.bulkImportEmployeesFromExcel(
+    req.file.buffer
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Employee bulk import completed',
+    data: { summary },
+  });
+};
+
 module.exports = {
   getEmployees,
   createEmployee,
   updateEmployee,
+  bulkImportEmployees,
 };
