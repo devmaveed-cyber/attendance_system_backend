@@ -7,13 +7,13 @@ const nfcTagSchema = new mongoose.Schema(
     _id: { type: String },
     branchId: {
       type: String,
-      required: [true, 'Branch is required'],
+      default: '',
       index: true,
     },
     branchName: {
       type: String,
-      required: true,
       trim: true,
+      default: '',
     },
     tagUid: {
       type: String,

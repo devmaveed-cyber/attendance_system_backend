@@ -214,6 +214,14 @@ const markAttendanceNfc = async (
   }
 
   const tag = await nfcTagService.resolveActiveNfcTag({ nfcTagId, tagUid });
+
+  if (!tag.branchId?.trim()) {
+    throw new ApiError(
+      400,
+      'This NFC tag is not assigned to a branch yet. Assign a branch before use.'
+    );
+  }
+
   const employee = await resolveEmployee(requester._id);
   const branch = await branchService.resolveActiveBranch(tag.branchId);
   validateGeofence({ latitude, longitude, branch });

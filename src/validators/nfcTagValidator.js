@@ -15,8 +15,15 @@ const listNfcTagsRules = [
 
 const createNfcTagRules = [
   body('branchId')
-    .matches(ID_PATTERN.BRANCH)
-    .withMessage('Valid branchId is required (format: BRN1234567)'),
+    .optional({ values: 'null' })
+    .trim()
+    .custom((value) => {
+      if (!value) {
+        return true;
+      }
+      return ID_PATTERN.BRANCH.test(value);
+    })
+    .withMessage('Invalid branchId format. Expected format: BRN1234567'),
   body('tagUid').trim().notEmpty().withMessage('NFC tag UID is required'),
   body('label').optional().trim().isLength({ max: 100 }),
   body('isActive')
@@ -28,8 +35,14 @@ const createNfcTagRules = [
 const updateNfcTagRules = [
   nfcTagIdRule,
   body('branchId')
-    .optional()
-    .matches(ID_PATTERN.BRANCH)
+    .optional({ values: 'null' })
+    .trim()
+    .custom((value) => {
+      if (!value) {
+        return true;
+      }
+      return ID_PATTERN.BRANCH.test(value);
+    })
     .withMessage('Invalid branchId format. Expected format: BRN1234567'),
   body('tagUid')
     .optional()

@@ -50,6 +50,15 @@ const resolveActiveNfcTag = async ({ nfcTagId, tagUid }) => {
   return tag;
 };
 
+const resolveOptionalBranch = async (branchId) => {
+  if (!branchId?.trim()) {
+    return { branchId: '', branchName: '' };
+  }
+
+  const branch = await branchService.resolveActiveBranch(branchId.trim());
+  return { branchId: branch._id, branchName: branch.name };
+};
+
 const createNfcTag = async ({ branchId, tagUid, label, isActive = true }) => {
   const normalizedUid = normalizeTagUid(tagUid);
 
@@ -62,11 +71,11 @@ const createNfcTag = async ({ branchId, tagUid, label, isActive = true }) => {
     throw new ApiError(409, 'This NFC tag UID is already registered');
   }
 
-  const branch = await branchService.resolveActiveBranch(branchId);
+  const branch = await resolveOptionalBranch(branchId);
 
   const tag = await NfcTag.create({
-    branchId: branch._id,
-    branchName: branch.name,
+    branchId: branch.branchId,
+    branchName: branch.branchName,
     tagUid: normalizedUid,
     label: label?.trim() || '',
     isActive,
@@ -83,9 +92,9 @@ const updateNfcTag = async (nfcTagId, payload) => {
   }
 
   if (payload.branchId !== undefined) {
-    const branch = await branchService.resolveActiveBranch(payload.branchId);
-    tag.branchId = branch._id;
-    tag.branchName = branch.name;
+    const branch = await resolveOptionalBranch(payload.branchId);
+    tag.branchId = branch.branchId;
+    tag.branchName = branch.branchName;
   }
 
   if (payload.tagUid !== undefined) {
