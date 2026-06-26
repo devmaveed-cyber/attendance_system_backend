@@ -1,10 +1,4 @@
 const ATTENDANCE_MARK_TYPES = ['checkIn', 'checkOut'];
-const OVERVIEW_STATUS_FILTERS = [
-  'checked_in',
-  'checked_out',
-  'late',
-  'early_leave',
-];
 const DEFAULT_BRANCH_RADIUS_METERS = 120;
 const MAX_ALLOWED_ACCURACY_METERS = 80;
 const DEFAULT_SHIFT_START = '09:00';
@@ -16,7 +10,6 @@ const ALLOW_PAST_DATE_ATTENDANCE = true;
 
 module.exports = {
   ATTENDANCE_MARK_TYPES,
-  OVERVIEW_STATUS_FILTERS,
   DEFAULT_BRANCH_RADIUS_METERS,
   MAX_ALLOWED_ACCURACY_METERS,
   DEFAULT_SHIFT_START,
