@@ -2,6 +2,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { sanitizeEmployee } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
+const { parseOptionalDate } = require('../utils/employeeImportMapper');
 const branchService = require('./branchService');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -95,6 +96,23 @@ const createEmployee = async ({
   return sanitizeEmployee(employee);
 };
 
+const assignOptionalString = (employee, field, value) => {
+  if (value !== undefined) {
+    employee[field] = String(value ?? '').trim();
+  }
+};
+
+const assignOptionalDate = (employee, field, value) => {
+  if (value === undefined) return;
+
+  if (value === null || value === '') {
+    employee[field] = null;
+    return;
+  }
+
+  employee[field] = parseOptionalDate(value);
+};
+
 const updateEmployee = async (employeeId, payload) => {
   const employee = await User.findOne({
     _id: employeeId,
@@ -126,6 +144,34 @@ const updateEmployee = async (employeeId, payload) => {
   if (payload.password !== undefined) {
     employee.password = payload.password;
   }
+
+  if (payload.empNo !== undefined) {
+    const empNo = String(payload.empNo).trim();
+    if (empNo) {
+      const duplicate = await User.findOne({
+        empNo,
+        _id: { $ne: employeeId },
+      });
+      if (duplicate) {
+        throw new ApiError(409, 'Another employee already uses this EMP number');
+      }
+    }
+    employee.empNo = empNo;
+  }
+
+  assignOptionalString(employee, 'department', payload.department);
+  assignOptionalString(employee, 'jobPosition', payload.jobPosition);
+  assignOptionalString(employee, 'workingHours', payload.workingHours);
+  assignOptionalString(employee, 'gender', payload.gender);
+  assignOptionalString(employee, 'nationality', payload.nationality);
+  assignOptionalString(employee, 'instructorPermitNo', payload.instructorPermitNo);
+  assignOptionalString(employee, 'company', payload.company);
+  assignOptionalString(employee, 'gearType', payload.gearType);
+  assignOptionalString(employee, 'instructorLicenseTypes', payload.instructorLicenseTypes);
+  assignOptionalString(employee, 'hrCreatedBy', payload.hrCreatedBy);
+  assignOptionalString(employee, 'manager', payload.manager);
+  assignOptionalDate(employee, 'visaExpiryDate', payload.visaExpiryDate);
+  assignOptionalDate(employee, 'hrCreatedOn', payload.hrCreatedOn);
 
   await employee.save();
   return sanitizeEmployee(employee);
