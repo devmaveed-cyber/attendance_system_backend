@@ -43,4 +43,5 @@ module.exports = {
   userIdRule,
   createUserRules,
   updateUserRules,
+  deleteUserRules: [userIdRule],
 };

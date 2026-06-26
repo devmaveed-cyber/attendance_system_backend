@@ -152,6 +152,22 @@ const updateNfcTag = async (nfcTagId, payload) => {
   return sanitizeNfcTag(tag);
 };
 
+const deleteNfcTag = async (nfcTagId) => {
+  const tag = await NfcTag.findById(nfcTagId);
+
+  if (!tag) {
+    throw new ApiError(404, 'NFC tag not found');
+  }
+
+  await NfcTag.deleteOne({ _id: tag._id });
+
+  return {
+    nfcTagId: tag._id,
+    label: tag.label,
+    tagUid: tag.tagUid,
+  };
+};
+
 const touchLastScanned = async (nfcTagId) => {
   await NfcTag.findByIdAndUpdate(nfcTagId, {
     $set: { lastScannedAt: new Date() },
@@ -168,6 +184,7 @@ module.exports = {
   resolveActiveNfcTag,
   createNfcTag,
   updateNfcTag,
+  deleteNfcTag,
   touchLastScanned,
   syncBranchName,
 };

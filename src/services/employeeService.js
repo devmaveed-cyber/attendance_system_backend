@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const AttendanceRecord = require('../models/AttendanceRecord');
 const ApiError = require('../utils/ApiError');
 const { sanitizeEmployee } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
@@ -177,9 +178,33 @@ const updateEmployee = async (employeeId, payload) => {
   return sanitizeEmployee(employee);
 };
 
+const deleteEmployee = async (employeeId) => {
+  const employee = await User.findOne({
+    _id: employeeId,
+    accountRole: 'employee',
+  });
+
+  if (!employee) {
+    throw new ApiError(404, 'Employee not found');
+  }
+
+  const attendanceResult = await AttendanceRecord.deleteMany({
+    userId: employee._id,
+  });
+
+  await User.deleteOne({ _id: employee._id });
+
+  return {
+    employeeId: employee._id,
+    name: employee.name,
+    deletedAttendanceRecords: attendanceResult.deletedCount,
+  };
+};
+
 module.exports = {
   getEmployees,
   getAllEmployees,
   createEmployee,
   updateEmployee,
+  deleteEmployee,
 };

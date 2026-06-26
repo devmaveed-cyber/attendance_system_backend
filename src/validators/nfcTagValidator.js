@@ -61,4 +61,5 @@ module.exports = {
   listNfcTagsRules,
   createNfcTagRules,
   updateNfcTagRules,
+  deleteNfcTagRules: [nfcTagIdRule],
 };

@@ -81,4 +81,5 @@ module.exports = {
   employeeIdRule,
   createEmployeeRules,
   updateEmployeeRules,
+  deleteEmployeeRules: [employeeIdRule],
 };

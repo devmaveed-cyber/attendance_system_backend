@@ -26,6 +26,7 @@ const {
   userIdRule,
   createUserRules,
   updateUserRules,
+  deleteUserRules,
 } = require('../validators/userValidator');
 const {
   createBranchRules,
@@ -35,11 +36,13 @@ const {
 const {
   createEmployeeRules,
   updateEmployeeRules,
+  deleteEmployeeRules,
 } = require('../validators/employeeValidator');
 const {
   listNfcTagsRules,
   createNfcTagRules,
   updateNfcTagRules,
+  deleteNfcTagRules,
 } = require('../validators/nfcTagValidator');
 const {
   todayAttendanceRules,
@@ -113,6 +116,13 @@ router.put(
   asyncHandler(userController.updateUser)
 );
 
+router.delete(
+  '/users/:id',
+  deleteUserRules,
+  validate,
+  asyncHandler(userController.deleteUser)
+);
+
 router.use('/branches', protect);
 
 router.get(
@@ -168,6 +178,13 @@ router.put(
   asyncHandler(employeeController.updateEmployee)
 );
 
+router.delete(
+  '/employees/:id',
+  deleteEmployeeRules,
+  validate,
+  asyncHandler(employeeController.deleteEmployee)
+);
+
 router.use('/nfc-tags', protect);
 
 router.get(
@@ -194,6 +211,15 @@ router.put(
   updateNfcTagRules,
   validate,
   asyncHandler(nfcTagController.updateNfcTag)
+);
+
+router.delete(
+  '/nfc-tags/:id',
+  requireAdmin,
+  requireAnySection('nfcTags'),
+  deleteNfcTagRules,
+  validate,
+  asyncHandler(nfcTagController.deleteNfcTag)
 );
 
 router.use('/attendance', protect);

@@ -41,8 +41,19 @@ const updateNfcTag = async (req, res) => {
   });
 };
 
+const deleteNfcTag = async (req, res) => {
+  const result = await nfcTagService.deleteNfcTag(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: 'NFC tag deleted successfully',
+    data: result,
+  });
+};
+
 module.exports = {
   getNfcTags,
   createNfcTag,
   updateNfcTag,
+  deleteNfcTag,
 };

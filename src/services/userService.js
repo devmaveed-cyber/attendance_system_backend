@@ -114,9 +114,26 @@ const updateUser = async (userId, payload) => {
   return sanitizeUser(user);
 };
 
+const deleteUser = async (userId, requesterId) => {
+  if (userId === requesterId) {
+    throw new ApiError(400, 'You cannot delete your own account');
+  }
+
+  const user = await User.findById(userId);
+  assertDashboardUser(user);
+
+  await User.deleteOne({ _id: user._id });
+
+  return {
+    userId: user._id,
+    name: user.name,
+  };
+};
+
 module.exports = {
   getUsers,
   getAllUsers,
   createUser,
   updateUser,
+  deleteUser,
 };

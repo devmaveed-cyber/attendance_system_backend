@@ -55,9 +55,20 @@ const bulkImportEmployees = async (req, res) => {
   });
 };
 
+const deleteEmployee = async (req, res) => {
+  const result = await employeeService.deleteEmployee(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: 'Employee deleted successfully',
+    data: result,
+  });
+};
+
 module.exports = {
   getEmployees,
   createEmployee,
   updateEmployee,
   bulkImportEmployees,
+  deleteEmployee,
 };
