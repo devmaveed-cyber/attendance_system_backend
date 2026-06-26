@@ -136,9 +136,19 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre('validate', async function assignUserId(next) {
   if (this.isNew && !this._id) {
-    const prefix =
-      this.accountRole === 'employee' ? ID_PREFIX.EMPLOYEE : ID_PREFIX.USER;
-    this._id = await generateCustomId(prefix);
+    if (this.accountRole === 'employee') {
+      const empNo = String(this.empNo || '').trim();
+
+      if (!empNo) {
+        return next(new Error('EMP number is required for employees'));
+      }
+
+      this._id = empNo;
+      this.empNo = empNo;
+      return next();
+    }
+
+    this._id = await generateCustomId(ID_PREFIX.USER);
   }
 
   next();

@@ -4,17 +4,16 @@ const {
   OVERVIEW_STATUS_FILTERS,
 } = require('../constants/attendanceConstants');
 const { ID_PATTERN } = require('../utils/idGenerator');
+const { ATTENDANCE_EMPLOYEE_ID_PATTERN } = require('../utils/employeeId');
 
-const EMPLOYEE_ID_PATTERN = new RegExp(
-  `^(${ID_PATTERN.EMPLOYEE.source.slice(1, -1)}|${ID_PATTERN.USER.source.slice(1, -1)})$`
-);
+const EMPLOYEE_ID_PATTERN = ATTENDANCE_EMPLOYEE_ID_PATTERN;
 
 const todayAttendanceRules = [
   query('employeeId')
     .optional()
     .matches(EMPLOYEE_ID_PATTERN)
     .withMessage(
-      'Invalid employeeId format. Expected format: EMP1234567 or USR1234567'
+      'Invalid employeeId format. Expected format: 10250 (EMP No) or legacy EMP1234567'
     ),
 ];
 
@@ -83,7 +82,7 @@ const correctAttendanceRules = [
   body('employeeId')
     .matches(EMPLOYEE_ID_PATTERN)
     .withMessage(
-      'Invalid employeeId format. Expected format: EMP1234567 or USR1234567'
+      'Invalid employeeId format. Expected format: 10250 (EMP No) or legacy EMP1234567'
     ),
   body('dateKey')
     .matches(/^\d{4}-\d{2}-\d{2}$/)
@@ -117,7 +116,7 @@ const clearAttendanceRules = [
   body('employeeId')
     .matches(EMPLOYEE_ID_PATTERN)
     .withMessage(
-      'Invalid employeeId format. Expected format: EMP1234567 or USR1234567'
+      'Invalid employeeId format. Expected format: 10250 (EMP No) or legacy EMP1234567'
     ),
   body('dateKey')
     .matches(/^\d{4}-\d{2}-\d{2}$/)

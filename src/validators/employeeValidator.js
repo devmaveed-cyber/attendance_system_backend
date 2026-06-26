@@ -1,14 +1,14 @@
 const { body, param } = require('express-validator');
 const { ID_PATTERN } = require('../utils/idGenerator');
-
-const EMPLOYEE_ID_PATTERN = new RegExp(
-  `^(${ID_PATTERN.EMPLOYEE.source.slice(1, -1)}|${ID_PATTERN.USER.source.slice(1, -1)})$`
-);
+const {
+  EMP_NO_PATTERN,
+  EMPLOYEE_ROUTE_ID_PATTERN,
+} = require('../utils/employeeId');
 
 const employeeIdRule = param('id')
-  .matches(EMPLOYEE_ID_PATTERN)
+  .matches(EMPLOYEE_ROUTE_ID_PATTERN)
   .withMessage(
-    'Invalid employee id format. Expected format: EMP1234567 or USR1234567'
+    'Invalid employee id format. Expected format: 10250 (EMP No) or legacy EMP1234567'
   );
 
 const createEmployeeRules = [
@@ -17,6 +17,12 @@ const createEmployeeRules = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
+  body('empNo')
+    .trim()
+    .notEmpty()
+    .withMessage('EMP number is required')
+    .matches(EMP_NO_PATTERN)
+    .withMessage('EMP number must be 4 to 10 digits'),
   body('branchId')
     .matches(ID_PATTERN.BRANCH)
     .withMessage('Valid branchId is required (format: BRN1234567)'),
@@ -43,7 +49,6 @@ const updateEmployeeRules = [
     .optional()
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
-  body('empNo').optional().trim(),
   body('department').optional().trim(),
   body('jobPosition').optional().trim(),
   body('workingHours').optional().trim(),

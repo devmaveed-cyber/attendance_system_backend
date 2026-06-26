@@ -73,11 +73,24 @@ const createEmployee = async ({
   password,
   phone,
   branchId,
+  empNo,
 }) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
     throw new ApiError(409, 'An employee with this email already exists');
+  }
+
+  const normalizedEmpNo = String(empNo || '').trim();
+
+  if (!normalizedEmpNo) {
+    throw new ApiError(400, 'EMP number is required');
+  }
+
+  const duplicateEmpNo = await User.findOne({ empNo: normalizedEmpNo });
+
+  if (duplicateEmpNo) {
+    throw new ApiError(409, 'An employee with this EMP number already exists');
   }
 
   const branch = await branchService.resolveActiveBranch(branchId);
@@ -87,6 +100,7 @@ const createEmployee = async ({
     email,
     password,
     phone,
+    empNo: normalizedEmpNo,
     groupId: '',
     groupName: '',
     branchId: branch._id,
@@ -144,20 +158,6 @@ const updateEmployee = async (employeeId, payload) => {
 
   if (payload.password !== undefined) {
     employee.password = payload.password;
-  }
-
-  if (payload.empNo !== undefined) {
-    const empNo = String(payload.empNo).trim();
-    if (empNo) {
-      const duplicate = await User.findOne({
-        empNo,
-        _id: { $ne: employeeId },
-      });
-      if (duplicate) {
-        throw new ApiError(409, 'Another employee already uses this EMP number');
-      }
-    }
-    employee.empNo = empNo;
   }
 
   assignOptionalString(employee, 'department', payload.department);

@@ -7,7 +7,7 @@ const {
   DEFAULT_SHIFT_END,
   DEFAULT_GRACE_MINUTES_LATE,
 } = require('../constants/attendanceConstants');
-const { generateCustomId, ID_PREFIX } = require('../utils/idGenerator');
+const { normalizeEmpNo } = require('../utils/employeeId');
 const {
   parseEmployeeWorkbook,
   isEmptyImportRow,
@@ -147,7 +147,8 @@ const hashEmployeeBatch = async (employees) => {
     const chunkHashed = await Promise.all(
       chunk.map(async (employee) => ({
         ...employee,
-        _id: await generateCustomId(ID_PREFIX.EMPLOYEE),
+        _id: normalizeEmpNo(employee.empNo),
+        empNo: normalizeEmpNo(employee.empNo),
         password: await bcrypt.hash(employee.password, 12),
       }))
     );
