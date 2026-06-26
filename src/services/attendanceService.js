@@ -391,6 +391,17 @@ const listDateKeysInRange = (startDate, endDate) => {
   return keys;
 };
 
+const matchesOverviewStatusFilter = (row, statusFilter) => {
+  switch (statusFilter) {
+    case 'checked_in':
+      return row.status !== 'absent';
+    case 'checked_out':
+      return row.status === 'checked_out';
+    default:
+      return true;
+  }
+};
+
 const buildOverviewSummary = (rows) => {
   const employeeIds = new Set();
 
@@ -433,6 +444,7 @@ const getOverview = async (
     endDate,
     branchId,
     search,
+    statusFilter,
     includeInactive = false,
     page = 1,
     limit = 25,
@@ -533,18 +545,25 @@ const getOverview = async (
   });
 
   const summary = buildOverviewSummary(rows);
+  const normalizedStatusFilter = statusFilter?.trim() || '';
+  const filteredRows = normalizedStatusFilter
+    ? rows.filter((row) =>
+        matchesOverviewStatusFilter(row, normalizedStatusFilter)
+      )
+    : rows;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 25));
   const skip = (safePage - 1) * safeLimit;
-  const paginatedRows = rows.slice(skip, skip + safeLimit);
+  const paginatedRows = filteredRows.slice(skip, skip + safeLimit);
 
   return {
     startDate: start,
     endDate: end,
     date: start,
     employeeCount: summary.employeeCount,
-    count: summary.totalRows,
+    count: filteredRows.length,
     summary,
+    statusFilter: normalizedStatusFilter || null,
     branches: [...branchOptionsMap.values()].sort((a, b) =>
       a.name.localeCompare(b.name)
     ),
@@ -552,7 +571,7 @@ const getOverview = async (
     pagination: buildPaginationMeta({
       page: safePage,
       limit: safeLimit,
-      total: rows.length,
+      total: filteredRows.length,
     }),
   };
 };

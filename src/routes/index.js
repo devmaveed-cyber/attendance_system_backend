@@ -30,6 +30,7 @@ const {
 const {
   createBranchRules,
   updateBranchRules,
+  deleteBranchRules,
 } = require('../validators/branchValidator');
 const {
   createEmployeeRules,
@@ -136,6 +137,15 @@ router.put(
   updateBranchRules,
   validate,
   asyncHandler(branchController.updateBranch)
+);
+
+router.delete(
+  '/branches/:id',
+  requireAdmin,
+  requireAnySection('branches'),
+  deleteBranchRules,
+  validate,
+  asyncHandler(branchController.deleteBranch)
 );
 
 router.use('/employees', protect, requireAdmin, requireAnySection('employees'));

@@ -16,16 +16,15 @@ const {
   mapExcelRowToEmployeeFields,
   buildImportPassword,
 } = require('../utils/employeeImportMapper');
+const {
+  normalizeBranchName,
+  normalizeBranchKey,
+  resolveBranchFromExcelName,
+} = require('../utils/branchNameMatcher');
 
 const DEFAULT_IMPORT_LATITUDE = 25.14758;
 const DEFAULT_IMPORT_LONGITUDE = 55.241171;
 const DEFAULT_IMPORT_RADIUS_METERS = 500;
-
-const normalizeBranchName = (value) =>
-  value.trim().replace(/\s+/g, ' ');
-
-const normalizeBranchKey = (value) =>
-  normalizeBranchName(value).toLowerCase();
 
 const buildFallbackEmail = (empNo) => `emp${String(empNo).trim()}@ecodrive.ae`;
 
@@ -105,12 +104,13 @@ const loadExistingImportKeys = async () => {
 const resolveBranchForRow = async ({
   row,
   branchLookup,
+  branchList,
   matchedBranchKeys,
   summary,
 }) => {
   const branchName = row.Branch.trim();
-  const branchKey = normalizeBranchKey(branchName);
-  let branch = branchLookup.get(branchKey);
+  const resolved = resolveBranchFromExcelName(branchName, branchList);
+  let branch = resolved.branch;
 
   if (!branch) {
     const shift = mapWorkingHoursToShift(row['Working Hours']);
@@ -123,11 +123,16 @@ const resolveBranchForRow = async ({
       graceMinutesLate: DEFAULT_GRACE_MINUTES_LATE,
       ...shift,
     });
-    branchLookup.set(branchKey, branch);
+    branchList.push(branch);
+    branchLookup.set(normalizeBranchKey(branch.name), branch);
     summary.branchesCreated += 1;
-  } else if (!matchedBranchKeys.has(branchKey)) {
-    matchedBranchKeys.add(branchKey);
-    summary.branchesMatched += 1;
+  } else {
+    const branchKey = normalizeBranchKey(branch.name);
+
+    if (!matchedBranchKeys.has(branchKey)) {
+      matchedBranchKeys.add(branchKey);
+      summary.branchesMatched += 1;
+    }
   }
 
   return branch;
@@ -196,6 +201,7 @@ const bulkImportEmployeesFromExcel = async (buffer) => {
   };
 
   const branchLookup = await loadBranchLookup();
+  const branchList = [...branchLookup.values()];
   const existingKeys = await loadExistingImportKeys();
   const employeesToCreate = [];
   const matchedBranchKeys = new Set();
@@ -223,6 +229,7 @@ const bulkImportEmployeesFromExcel = async (buffer) => {
       const branch = await resolveBranchForRow({
         row,
         branchLookup,
+        branchList,
         matchedBranchKeys,
         summary,
       });

@@ -30,8 +30,19 @@ const updateBranch = async (req, res) => {
   });
 };
 
+const deleteBranch = async (req, res) => {
+  const result = await branchService.deleteBranch(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    message: 'Branch deleted successfully',
+    data: result,
+  });
+};
+
 module.exports = {
   getBranches,
   createBranch,
   updateBranch,
+  deleteBranch,
 };

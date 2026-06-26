@@ -1,6 +1,7 @@
 const Branch = require('../models/Branch');
 const User = require('../models/User');
 const NfcTag = require('../models/NfcTag');
+const AttendanceRecord = require('../models/AttendanceRecord');
 const ApiError = require('../utils/ApiError');
 const { sanitizeBranch } = require('../utils/userPresenter');
 const {
@@ -136,9 +137,43 @@ const updateBranch = async (branchId, payload) => {
   return sanitizeBranch(branch);
 };
 
+const deleteBranch = async (branchId) => {
+  const branch = await Branch.findById(branchId);
+
+  if (!branch) {
+    throw new ApiError(404, 'Branch not found');
+  }
+
+  const employeeResult = await User.updateMany(
+    { branchId: branch._id, accountRole: 'employee' },
+    { $set: { branchId: '', branchName: '' } }
+  );
+
+  const nfcTagResult = await NfcTag.updateMany(
+    { branchId: branch._id },
+    { $set: { branchId: '', branchName: '' } }
+  );
+
+  const attendanceResult = await AttendanceRecord.updateMany(
+    { branchId: branch._id },
+    { $set: { branchId: '', branchName: '' } }
+  );
+
+  await Branch.deleteOne({ _id: branch._id });
+
+  return {
+    branchId: branch._id,
+    name: branch.name,
+    unassignedEmployeeCount: employeeResult.modifiedCount,
+    unassignedNfcTagCount: nfcTagResult.modifiedCount,
+    clearedAttendanceRecordCount: attendanceResult.modifiedCount,
+  };
+};
+
 module.exports = {
   getAllBranches,
   resolveActiveBranch,
   createBranch,
   updateBranch,
+  deleteBranch,
 };

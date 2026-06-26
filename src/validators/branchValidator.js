@@ -62,8 +62,11 @@ const updateBranchRules = [
     .withMessage('graceMinutesLate must be between 0 and 120'),
 ];
 
+const deleteBranchRules = [branchIdRule];
+
 module.exports = {
   branchIdRule,
   createBranchRules,
   updateBranchRules,
+  deleteBranchRules,
 };
