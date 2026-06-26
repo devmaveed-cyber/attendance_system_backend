@@ -1,7 +1,57 @@
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { sanitizeUser } = require('../utils/userPresenter');
+const { buildPaginationMeta } = require('../utils/paginationUtils');
 const groupService = require('./groupService');
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildUserSearchFilter = (search = '') => {
+  const filter = { accountRole: { $ne: 'employee' } };
+  const normalized = search.trim();
+
+  if (!normalized) {
+    return filter;
+  }
+
+  const regex = new RegExp(escapeRegex(normalized), 'i');
+  filter.$or = [
+    { _id: regex },
+    { name: regex },
+    { email: regex },
+    { phone: regex },
+    { groupId: regex },
+    { groupName: regex },
+  ];
+
+  return filter;
+};
+
+const getUsers = async ({ page = 1, limit = 25, search = '' } = {}) => {
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.min(100, Math.max(1, limit));
+  const skip = (safePage - 1) * safeLimit;
+  const filter = buildUserSearchFilter(search);
+
+  const [users, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
+    User.countDocuments(filter),
+  ]);
+
+  return {
+    users: users.map(sanitizeUser),
+    pagination: buildPaginationMeta({
+      page: safePage,
+      limit: safeLimit,
+      total,
+    }),
+  };
+};
+
+const getAllUsers = async () => {
+  const { users } = await getUsers({ page: 1, limit: 100 });
+  return users;
+};
 
 const assertDashboardUser = (user) => {
   if (!user || user.accountRole === 'employee') {
@@ -10,13 +60,6 @@ const assertDashboardUser = (user) => {
       'Dashboard user not found. Manage employees from the Employees section.'
     );
   }
-};
-
-const getAllUsers = async () => {
-  const users = await User.find({ accountRole: { $ne: 'employee' } }).sort({
-    createdAt: -1,
-  });
-  return users.map(sanitizeUser);
 };
 
 const createUser = async ({ name, email, password, phone, groupId }) => {
@@ -72,6 +115,7 @@ const updateUser = async (userId, payload) => {
 };
 
 module.exports = {
+  getUsers,
   getAllUsers,
   createUser,
   updateUser,

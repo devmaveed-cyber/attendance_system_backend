@@ -2,11 +2,12 @@ const NfcTag = require('../models/NfcTag');
 const ApiError = require('../utils/ApiError');
 const { normalizeTagUid, isValidTagUid } = require('../utils/nfcUid');
 const { sanitizeNfcTag } = require('../utils/userPresenter');
+const { buildPaginationMeta } = require('../utils/paginationUtils');
 const branchService = require('./branchService');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const getAllNfcTags = async ({ branchId, search } = {}) => {
+const buildNfcTagSearchFilter = ({ branchId, search } = {}) => {
   const filter = {};
 
   if (branchId?.trim()) {
@@ -23,8 +24,33 @@ const getAllNfcTags = async ({ branchId, search } = {}) => {
     ];
   }
 
-  const tags = await NfcTag.find(filter).sort({ createdAt: -1 });
-  return tags.map(sanitizeNfcTag);
+  return filter;
+};
+
+const getNfcTags = async ({ page = 1, limit = 25, branchId, search } = {}) => {
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.min(100, Math.max(1, limit));
+  const skip = (safePage - 1) * safeLimit;
+  const filter = buildNfcTagSearchFilter({ branchId, search });
+
+  const [tags, total] = await Promise.all([
+    NfcTag.find(filter).sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
+    NfcTag.countDocuments(filter),
+  ]);
+
+  return {
+    tags: tags.map(sanitizeNfcTag),
+    pagination: buildPaginationMeta({
+      page: safePage,
+      limit: safeLimit,
+      total,
+    }),
+  };
+};
+
+const getAllNfcTags = async ({ branchId, search } = {}) => {
+  const { tags } = await getNfcTags({ page: 1, limit: 100, branchId, search });
+  return tags;
 };
 
 const resolveActiveNfcTag = async ({ nfcTagId, tagUid }) => {
@@ -137,6 +163,7 @@ const syncBranchName = async (branchId, branchName) => {
 };
 
 module.exports = {
+  getNfcTags,
   getAllNfcTags,
   resolveActiveNfcTag,
   createNfcTag,

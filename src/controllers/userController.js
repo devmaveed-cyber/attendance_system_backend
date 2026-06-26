@@ -1,12 +1,19 @@
 const userService = require('../services/userService');
 
-const getUsers = async (_req, res) => {
-  const users = await userService.getAllUsers();
+const getUsers = async (req, res) => {
+  const page = Number.parseInt(req.query.page, 10) || 1;
+  const limit = Number.parseInt(req.query.limit, 10) || 25;
+  const search = req.query.search?.toString() || '';
+
+  const result = await userService.getUsers({ page, limit, search });
 
   res.status(200).json({
     success: true,
-    count: users.length,
-    data: { users },
+    count: result.users.length,
+    data: {
+      users: result.users,
+      pagination: result.pagination,
+    },
   });
 };
 

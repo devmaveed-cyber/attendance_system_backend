@@ -8,6 +8,7 @@ const {
   isInsideGeofence,
 } = require('../utils/geofence');
 const { sanitizeAttendanceRecord } = require('../utils/userPresenter');
+const { buildPaginationMeta } = require('../utils/paginationUtils');
 const { MAX_ALLOWED_ACCURACY_METERS, ALLOW_PAST_DATE_ATTENDANCE } = require('../constants/attendanceConstants');
 const { evaluateShiftStatus } = require('../utils/shiftUtils');
 const branchService = require('./branchService');
@@ -390,9 +391,52 @@ const listDateKeysInRange = (startDate, endDate) => {
   return keys;
 };
 
+const buildOverviewSummary = (rows) => {
+  const employeeIds = new Set();
+
+  let checkedInCount = 0;
+  let checkedOutCount = 0;
+  let lateCount = 0;
+  let earlyLeaveCount = 0;
+
+  rows.forEach((row) => {
+    employeeIds.add(row.employeeId);
+    if (row.status !== 'absent') {
+      checkedInCount += 1;
+    }
+    if (row.status === 'checked_out') {
+      checkedOutCount += 1;
+    }
+    if (row.isLateCheckIn || String(row.shiftStatus || '').includes('late')) {
+      lateCount += 1;
+    }
+    if (row.isEarlyCheckOut) {
+      earlyLeaveCount += 1;
+    }
+  });
+
+  return {
+    totalRows: rows.length,
+    employeeCount: employeeIds.size,
+    checkedInCount,
+    checkedOutCount,
+    lateCount,
+    earlyLeaveCount,
+  };
+};
+
 const getOverview = async (
   requester,
-  { date, startDate, endDate, branchId, search, includeInactive = false }
+  {
+    date,
+    startDate,
+    endDate,
+    branchId,
+    search,
+    includeInactive = false,
+    page = 1,
+    limit = 25,
+  }
 ) => {
   const today = dateKeyFor();
   let start = startDate?.trim() || date?.trim() || today;
@@ -488,18 +532,28 @@ const getOverview = async (
     });
   });
 
-  const uniqueEmployeeIds = new Set(rows.map((row) => row.employeeId));
+  const summary = buildOverviewSummary(rows);
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 25));
+  const skip = (safePage - 1) * safeLimit;
+  const paginatedRows = rows.slice(skip, skip + safeLimit);
 
   return {
     startDate: start,
     endDate: end,
     date: start,
-    employeeCount: uniqueEmployeeIds.size,
-    count: rows.length,
+    employeeCount: summary.employeeCount,
+    count: summary.totalRows,
+    summary,
     branches: [...branchOptionsMap.values()].sort((a, b) =>
       a.name.localeCompare(b.name)
     ),
-    rows,
+    rows: paginatedRows,
+    pagination: buildPaginationMeta({
+      page: safePage,
+      limit: safeLimit,
+      total: rows.length,
+    }),
   };
 };
 
