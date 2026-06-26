@@ -1,5 +1,8 @@
 const { body, query } = require('express-validator');
-const { ATTENDANCE_MARK_TYPES } = require('../constants/attendanceConstants');
+const {
+  ATTENDANCE_MARK_TYPES,
+  OVERVIEW_STATUS_FILTERS,
+} = require('../constants/attendanceConstants');
 const { ID_PATTERN } = require('../utils/idGenerator');
 
 const EMPLOYEE_ID_PATTERN = new RegExp(
@@ -33,6 +36,12 @@ const overviewAttendanceRules = [
     .matches(ID_PATTERN.BRANCH)
     .withMessage('Invalid branchId format. Expected format: BRN1234567'),
   query('search').optional().trim().isLength({ max: 100 }),
+  query('statusFilter')
+    .optional()
+    .isIn(OVERVIEW_STATUS_FILTERS)
+    .withMessage(
+      `statusFilter must be one of: ${OVERVIEW_STATUS_FILTERS.join(', ')}`
+    ),
   query('includeInactive')
     .optional()
     .isBoolean()
