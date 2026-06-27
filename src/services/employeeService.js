@@ -67,14 +67,16 @@ const getAllEmployees = async () => {
   return employees;
 };
 
-const createEmployee = async ({
-  name,
-  email,
-  password,
-  phone,
-  branchId,
-  empNo,
-}) => {
+const createEmployee = async (payload) => {
+  const {
+    name,
+    email,
+    password,
+    phone,
+    branchId,
+    empNo,
+  } = payload;
+
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -107,6 +109,22 @@ const createEmployee = async ({
     branchName: branch.name,
     accountRole: 'employee',
   });
+
+  assignOptionalString(employee, 'department', payload.department);
+  assignOptionalString(employee, 'jobPosition', payload.jobPosition);
+  assignOptionalString(employee, 'workingHours', payload.workingHours);
+  assignOptionalString(employee, 'gender', payload.gender);
+  assignOptionalString(employee, 'nationality', payload.nationality);
+  assignOptionalString(employee, 'instructorPermitNo', payload.instructorPermitNo);
+  assignOptionalString(employee, 'company', payload.company);
+  assignOptionalString(employee, 'gearType', payload.gearType);
+  assignOptionalString(employee, 'instructorLicenseTypes', payload.instructorLicenseTypes);
+  assignOptionalString(employee, 'hrCreatedBy', payload.hrCreatedBy);
+  assignOptionalString(employee, 'manager', payload.manager);
+  assignOptionalDate(employee, 'visaExpiryDate', payload.visaExpiryDate);
+  assignOptionalDate(employee, 'hrCreatedOn', payload.hrCreatedOn);
+
+  await employee.save();
 
   return sanitizeEmployee(employee);
 };

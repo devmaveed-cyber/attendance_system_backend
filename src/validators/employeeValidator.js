@@ -27,6 +27,37 @@ const createEmployeeRules = [
     .matches(ID_PATTERN.BRANCH)
     .withMessage('Valid branchId is required (format: BRN1234567)'),
   body('phone').optional().trim(),
+  body('department').optional().trim(),
+  body('jobPosition').optional().trim(),
+  body('workingHours').optional().trim(),
+  body('gender').optional().trim(),
+  body('nationality').optional().trim(),
+  body('instructorPermitNo').optional().trim(),
+  body('company').optional().trim(),
+  body('gearType').optional().trim(),
+  body('instructorLicenseTypes').optional().trim(),
+  body('hrCreatedBy').optional().trim(),
+  body('manager').optional().trim(),
+  body('visaExpiryDate')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === '') return true;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error('visaExpiryDate must be a valid date');
+      }
+      return true;
+    }),
+  body('hrCreatedOn')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null || value === '') return true;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new Error('hrCreatedOn must be a valid date');
+      }
+      return true;
+    }),
 ];
 
 const updateEmployeeRules = [
