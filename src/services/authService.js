@@ -97,7 +97,23 @@ const register = async ({ name, email, password, phone }) => {
   return buildAuthPayload(user);
 };
 
-const login = async ({ phone, password }) => {
+const login = async ({ email, phone, password }) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (normalizedEmail) {
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+
+    if (!user || !(await user.comparePassword(password))) {
+      throw new ApiError(401, 'Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new ApiError(403, 'Account is disabled');
+    }
+
+    return buildAuthPayload(user);
+  }
+
   const normalizedPhone = normalizePhone(phone);
 
   if (!normalizedPhone) {

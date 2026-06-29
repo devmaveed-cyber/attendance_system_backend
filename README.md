@@ -131,7 +131,15 @@ curl -X POST http://localhost:5000/api/auth/register \
 
 ### Login
 
+Dashboard admins use **email + password**. Mobile employees use **phone + password**.
+
 ```bash
+# Dashboard admin
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ali@example.com","password":"secret123"}'
+
+# Mobile employee
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"phone":"971501234567","password":"secret123"}'

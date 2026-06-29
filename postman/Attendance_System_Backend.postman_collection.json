@@ -67,7 +67,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"971501234567\",\n  \"password\": \"secret123\"\n}"
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
             "description": "Admin login — dashboard APIs ke liye token."
