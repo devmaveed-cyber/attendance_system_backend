@@ -4,7 +4,10 @@ const ApiError = require('../utils/ApiError');
 const { signToken } = require('../utils/token');
 const { sanitizeUser } = require('../utils/userPresenter');
 const { APP_SECTIONS } = require('../constants/appSections');
+const { normalizePhone } = require('../utils/phoneUtils');
+const { findUsersByPhone, assertPhoneAvailable } = require('../utils/userPhone');
 const branchService = require('./branchService');
+const { ensureBootstrapGroups } = require('./groupService');
 
 const resolveAllowedSections = async (user) => {
   if (user.accountRole === 'employee') {
@@ -18,6 +21,8 @@ const resolveAllowedSections = async (user) => {
   if (!user.groupId?.trim()) {
     return ['dashboard', 'attendance'];
   }
+
+  await ensureBootstrapGroups();
 
   const group = await Group.findById(user.groupId);
   if (!group || !group.isActive) {
@@ -40,6 +45,13 @@ const resolveAssignedBranch = async (user) => {
       latitude: branch.latitude,
       longitude: branch.longitude,
       radiusMeters: branch.radiusMeters,
+      geofenceType: branch.geofenceType || 'circle',
+      boundaryPoints: Array.isArray(branch.boundaryPoints)
+        ? branch.boundaryPoints.map((point) => ({
+            lat: point.lat,
+            lng: point.lng,
+          }))
+        : [],
     };
   } catch {
     return null;
@@ -72,22 +84,43 @@ const register = async ({ name, email, password, phone }) => {
     throw new ApiError(409, 'Email already registered');
   }
 
+  const normalizedPhone = await assertPhoneAvailable(phone);
+
   const user = await User.create({
     name,
     email,
     password,
-    phone,
+    phone: normalizedPhone,
     accountRole: 'admin',
   });
 
   return buildAuthPayload(user);
 };
 
-const login = async ({ email, password }) => {
-  const user = await User.findOne({ email }).select('+password');
+const login = async ({ phone, password }) => {
+  const normalizedPhone = normalizePhone(phone);
 
-  if (!user || !(await user.comparePassword(password))) {
-    throw new ApiError(401, 'Invalid email or password');
+  if (!normalizedPhone) {
+    throw new ApiError(401, 'Invalid phone number or password');
+  }
+
+  const users = await findUsersByPhone(normalizedPhone, { includePassword: true });
+
+  if (users.length === 0) {
+    throw new ApiError(401, 'Invalid phone number or password');
+  }
+
+  if (users.length > 1) {
+    throw new ApiError(
+      409,
+      'Multiple accounts are linked to this phone number. Contact your administrator.'
+    );
+  }
+
+  const user = users[0];
+
+  if (!(await user.comparePassword(password))) {
+    throw new ApiError(401, 'Invalid phone number or password');
   }
 
   if (!user.isActive) {

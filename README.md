@@ -126,7 +126,7 @@ Import this file in Postman:
 ```bash
 curl -X POST http://localhost:5000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ali","email":"ali@example.com","password":"secret123"}'
+  -d '{"name":"Ali","email":"ali@example.com","password":"secret123","phone":"971501234567"}'
 ```
 
 ### Login
@@ -134,7 +134,7 @@ curl -X POST http://localhost:5000/api/auth/register \
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"ali@example.com","password":"secret123"}'
+  -d '{"phone":"971501234567","password":"secret123"}'
 ```
 
 ### Get Profile

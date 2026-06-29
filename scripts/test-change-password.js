@@ -24,24 +24,24 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-async function registerAdmin(email) {
+async function registerAdmin(email, phone) {
   const res = await request('/auth/register', {
     method: 'POST',
     body: {
       name: 'Password Test Admin',
       email,
       password,
-      accountRole: 'admin',
+      phone,
     },
   });
   assert(res.status === 201, `Register admin failed: ${JSON.stringify(res.json)}`);
   return res.json.data.token;
 }
 
-async function login(email, pass) {
+async function login(phone, pass) {
   const res = await request('/auth/login', {
     method: 'POST',
-    body: { email, password: pass },
+    body: { phone, password: pass },
   });
   return { status: res.status, json: res.json };
 }
@@ -65,7 +65,11 @@ async function main() {
   const suffix = Date.now().toString(36);
   console.log(`Change password test against ${BASE}\n`);
 
-  const adminToken = await registerAdmin(`pwd.admin.${suffix}@test.local`);
+  const adminPhone = `97150${String(Date.now()).slice(-7)}`;
+  const userPhone = `97151${String(Date.now()).slice(-7)}`;
+  const employeePhone = `97152${String(Date.now()).slice(-7)}`;
+
+  const adminToken = await registerAdmin(`pwd.admin.${suffix}@test.local`, adminPhone);
   const branchId = await createBranch(adminToken);
 
   const userEmail = `pwd.user.${suffix}@test.local`;
@@ -76,6 +80,7 @@ async function main() {
       name: 'Dashboard User',
       email: userEmail,
       password,
+      phone: userPhone,
       groupId: 'GRP9999001',
     },
   });
@@ -89,10 +94,10 @@ async function main() {
   });
   assert(res.status === 200, `Update user password failed: ${JSON.stringify(res.json)}`);
 
-  let loginRes = await login(userEmail, password);
+  let loginRes = await login(userPhone, password);
   assert(loginRes.status === 401, 'Old user password should fail');
 
-  loginRes = await login(userEmail, newPassword);
+  loginRes = await login(userPhone, newPassword);
   assert(loginRes.status === 200, 'New user password should work');
 
   const employeeEmail = `pwd.emp.${suffix}@test.local`;
@@ -103,6 +108,8 @@ async function main() {
       name: 'Employee User',
       email: employeeEmail,
       password,
+      empNo: String(Date.now()).slice(-6),
+      phone: employeePhone,
       branchId,
     },
   });
@@ -116,10 +123,10 @@ async function main() {
   });
   assert(res.status === 200, `Update employee password failed: ${JSON.stringify(res.json)}`);
 
-  loginRes = await login(employeeEmail, password);
+  loginRes = await login(employeePhone, password);
   assert(loginRes.status === 401, 'Old employee password should fail');
 
-  loginRes = await login(employeeEmail, newPassword);
+  loginRes = await login(employeePhone, newPassword);
   assert(loginRes.status === 200, 'New employee password should work');
 
   console.log('PASS: admin can change dashboard user and employee passwords');

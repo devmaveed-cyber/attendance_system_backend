@@ -4,6 +4,7 @@ const {
   EMP_NO_PATTERN,
   EMPLOYEE_ROUTE_ID_PATTERN,
 } = require('../utils/employeeId');
+const { phoneBodyRule } = require('../utils/phoneValidator');
 
 const employeeIdRule = param('id')
   .matches(EMPLOYEE_ROUTE_ID_PATTERN)
@@ -26,7 +27,7 @@ const createEmployeeRules = [
   body('branchId')
     .matches(ID_PATTERN.BRANCH)
     .withMessage('Valid branchId is required (format: BRN1234567)'),
-  body('phone').optional().trim(),
+  phoneBodyRule('phone', { required: false }),
   body('department').optional().trim(),
   body('jobPosition').optional().trim(),
   body('workingHours').optional().trim(),
@@ -67,7 +68,7 @@ const updateEmployeeRules = [
     .trim()
     .notEmpty()
     .withMessage('Name cannot be empty'),
-  body('phone').optional().trim(),
+  phoneBodyRule('phone', { required: false }),
   body('branchId')
     .optional()
     .matches(ID_PATTERN.BRANCH)

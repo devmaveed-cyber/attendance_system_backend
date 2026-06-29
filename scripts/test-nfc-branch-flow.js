@@ -7,7 +7,9 @@ const BASE = process.env.API_BASE || 'http://localhost:5000/api';
 
 const suffix = Date.now().toString(36);
 const adminEmail = `admin.nfc.${suffix}@test.local`;
+const adminPhone = `97153${String(Date.now()).slice(-7)}`;
 const employeeEmail = `employee.nfc.${suffix}@test.local`;
+const employeePhone = '971500000000';
 const password = 'secret123';
 
 async function request(path, { method = 'GET', token, body } = {}) {
@@ -40,7 +42,7 @@ async function main() {
       name: 'NFC Test Admin',
       email: adminEmail,
       password,
-      accountRole: 'admin',
+      phone: adminPhone,
     },
   });
   assert(res.status === 201, `Admin register failed: ${JSON.stringify(res.json)}`);
@@ -81,7 +83,8 @@ async function main() {
       name: 'NFC Test Employee',
       email: employeeEmail,
       password,
-      phone: '0500000000',
+      empNo: String(Date.now()).slice(-6),
+      phone: employeePhone,
       branchId: branchA,
     },
   });
@@ -103,7 +106,7 @@ async function main() {
 
   res = await request('/auth/login', {
     method: 'POST',
-    body: { email: employeeEmail, password },
+    body: { phone: employeePhone, password },
   });
   assert(res.status === 200, `Employee login failed: ${JSON.stringify(res.json)}`);
   const employeeToken = res.json.data.token;

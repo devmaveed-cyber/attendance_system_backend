@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const { sanitizeEmployee } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
 const { parseOptionalDate } = require('../utils/employeeImportMapper');
+const { assertPhoneAvailable } = require('../utils/userPhone');
 const branchService = require('./branchService');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -96,12 +97,13 @@ const createEmployee = async (payload) => {
   }
 
   const branch = await branchService.resolveActiveBranch(branchId);
+  const normalizedPhone = await assertPhoneAvailable(phone);
 
   const employee = await User.create({
     name,
     email,
     password,
-    phone,
+    phone: normalizedPhone,
     empNo: normalizedEmpNo,
     groupId: '',
     groupName: '',
@@ -161,7 +163,7 @@ const updateEmployee = async (employeeId, payload) => {
   }
 
   if (payload.phone !== undefined) {
-    employee.phone = payload.phone;
+    employee.phone = await assertPhoneAvailable(payload.phone, employee._id);
   }
 
   if (payload.isActive !== undefined) {

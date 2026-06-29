@@ -1,8 +1,12 @@
+const { normalizePhone } = require('./phoneUtils');
+
 const parseOptionalDate = (value) => {
   if (!value) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
+
+const buildImportPassword = (empNo) => `ecodrive@${String(empNo).trim()}`;
 
 const mapExcelRowToEmployeeFields = ({
   row,
@@ -42,17 +46,6 @@ const mapExcelRowToEmployeeFields = ({
 
   return fields;
 };
-
-const normalizePhone = (value) => {
-  const digits = String(value || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('971')) return digits;
-  if (digits.startsWith('0')) return `971${digits.slice(1)}`;
-  if (digits.length === 9) return `971${digits}`;
-  return digits;
-};
-
-const buildImportPassword = (empNo) => `ecodrive@${String(empNo).trim()}`;
 
 module.exports = {
   parseOptionalDate,

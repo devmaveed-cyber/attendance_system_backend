@@ -2,6 +2,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const { sanitizeUser } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
+const { assertPhoneAvailable } = require('../utils/userPhone');
 const groupService = require('./groupService');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -70,12 +71,13 @@ const createUser = async ({ name, email, password, phone, groupId }) => {
   }
 
   const group = await groupService.resolveActiveGroup(groupId);
+  const normalizedPhone = await assertPhoneAvailable(phone);
 
   const user = await User.create({
     name,
     email,
     password,
-    phone,
+    phone: normalizedPhone,
     groupId: group._id,
     groupName: group.name,
     accountRole: 'admin',
@@ -93,7 +95,7 @@ const updateUser = async (userId, payload) => {
   }
 
   if (payload.phone !== undefined) {
-    user.phone = payload.phone;
+    user.phone = await assertPhoneAvailable(payload.phone, user._id);
   }
 
   if (payload.isActive !== undefined) {

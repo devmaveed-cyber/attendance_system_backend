@@ -22,14 +22,14 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-async function registerAdmin(email) {
+async function registerAdmin(email, phone) {
   const res = await request('/auth/register', {
     method: 'POST',
     body: {
       name: 'Audit Admin',
       email,
       password: 'secret123',
-      accountRole: 'admin',
+      phone,
     },
   });
   assert(res.status === 201, `Register failed: ${JSON.stringify(res.json)}`);
@@ -46,7 +46,7 @@ async function createGroup(token, name, sections) {
   return res.json.data.group.groupId;
 }
 
-async function createUser(token, { email, groupId }) {
+async function createUser(token, { email, phone, groupId }) {
   const res = await request('/users', {
     method: 'POST',
     token,
@@ -54,16 +54,17 @@ async function createUser(token, { email, groupId }) {
       name: 'Limited Admin',
       email,
       password: 'secret123',
+      phone,
       groupId,
     },
   });
   assert(res.status === 201, `Create user failed: ${JSON.stringify(res.json)}`);
 }
 
-async function login(email) {
+async function login(phone) {
   const res = await request('/auth/login', {
     method: 'POST',
-    body: { email, password: 'secret123' },
+    body: { phone, password: 'secret123' },
   });
   assert(res.status === 200, `Login failed: ${JSON.stringify(res.json)}`);
   return {
@@ -82,7 +83,11 @@ async function main() {
   const suffix = Date.now().toString(36);
   console.log(`Deep permission audit against ${BASE}\n`);
 
-  const ownerToken = await registerAdmin(`audit.owner.${suffix}@test.local`);
+  const ownerPhone = `97154${String(Date.now()).slice(-7)}`;
+  const usersOnlyPhone = `97155${String(Date.now() + 1).slice(-7)}`;
+  const dashBranchPhone = `97156${String(Date.now() + 2).slice(-7)}`;
+
+  const ownerToken = await registerAdmin(`audit.owner.${suffix}@test.local`, ownerPhone);
   const groupIds = [];
 
   const usersOnlyGroupId = await createGroup(
@@ -100,12 +105,20 @@ async function main() {
   groupIds.push(dashBranchGroupId);
 
   const usersOnlyEmail = `audit.users.${suffix}@test.local`;
-  await createUser(ownerToken, { email: usersOnlyEmail, groupId: usersOnlyGroupId });
+  await createUser(ownerToken, {
+    email: usersOnlyEmail,
+    phone: usersOnlyPhone,
+    groupId: usersOnlyGroupId,
+  });
 
   const dashBranchEmail = `audit.dash.${suffix}@test.local`;
-  await createUser(ownerToken, { email: dashBranchEmail, groupId: dashBranchGroupId });
+  await createUser(ownerToken, {
+    email: dashBranchEmail,
+    phone: dashBranchPhone,
+    groupId: dashBranchGroupId,
+  });
 
-  const usersOnly = await login(usersOnlyEmail);
+  const usersOnly = await login(usersOnlyPhone);
   assert(
     JSON.stringify(usersOnly.allowedSections) === JSON.stringify(['users']),
     `Expected users-only sections, got ${usersOnly.allowedSections}`
@@ -121,7 +134,7 @@ async function main() {
   );
   console.log('OK: users-only admin can list groups for user form dropdown');
 
-  const dashBranch = await login(dashBranchEmail);
+  const dashBranch = await login(dashBranchPhone);
   res = await request('/branches', { token: dashBranch.token });
   assert(res.status === 200, 'Dash+branch admin should list branches');
 

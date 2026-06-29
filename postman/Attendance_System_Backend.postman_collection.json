@@ -40,7 +40,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"03001234567\"\n}"
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\",\n  \"phone\": \"971501234567\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/register",
             "description": "Pehla admin account banane ke liye."
@@ -67,7 +67,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"secret123\"\n}"
+              "raw": "{\n  \"phone\": \"971501234567\",\n  \"password\": \"secret123\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
             "description": "Admin login — dashboard APIs ke liye token."
@@ -94,7 +94,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"employee@example.com\",\n  \"password\": \"secret123\"\n}"
+              "raw": "{\n  \"phone\": \"971509876543\",\n  \"password\": \"secret123\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login",
             "description": "Employee login — mobile app / self attendance ke liye."

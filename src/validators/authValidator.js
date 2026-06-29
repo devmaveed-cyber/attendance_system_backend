@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { phoneBodyRule } = require('../utils/phoneValidator');
 
 const registerRules = [
   body('name').trim().notEmpty().withMessage('Name is required'),
@@ -6,11 +7,11 @@ const registerRules = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
-  body('phone').optional().trim(),
+  phoneBodyRule('phone', { required: true }),
 ];
 
 const loginRules = [
-  body('email').trim().isEmail().withMessage('Valid email is required'),
+  phoneBodyRule('phone', { required: true }),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 

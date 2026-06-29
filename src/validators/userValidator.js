@@ -1,5 +1,6 @@
 const { body, param } = require('express-validator');
 const { ID_PATTERN } = require('../utils/idGenerator');
+const { phoneBodyRule } = require('../utils/phoneValidator');
 
 const userIdRule = param('id')
   .matches(ID_PATTERN.USER)
@@ -14,7 +15,7 @@ const createUserRules = [
   body('groupId')
     .matches(ID_PATTERN.GROUP)
     .withMessage('Valid groupId is required (format: GRP1234567)'),
-  body('phone').optional().trim(),
+  phoneBodyRule('phone', { required: false }),
 ];
 
 const updateUserRules = [
@@ -24,7 +25,7 @@ const updateUserRules = [
     .trim()
     .notEmpty()
     .withMessage('Name cannot be empty'),
-  body('phone').optional().trim(),
+  phoneBodyRule('phone', { required: false }),
   body('groupId')
     .optional()
     .matches(ID_PATTERN.GROUP)

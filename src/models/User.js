@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { generateCustomId, ID_PREFIX } = require('../utils/idGenerator');
+const { normalizePhone } = require('../utils/phoneUtils');
 
 const ACCOUNT_ROLES = ['admin', 'employee'];
 
@@ -149,6 +150,14 @@ userSchema.pre('validate', async function assignUserId(next) {
     }
 
     this._id = await generateCustomId(ID_PREFIX.USER);
+  }
+
+  next();
+});
+
+userSchema.pre('save', function normalizePhoneField(next) {
+  if (this.isModified('phone') || this.isNew) {
+    this.phone = normalizePhone(this.phone);
   }
 
   next();
