@@ -126,14 +126,18 @@ const login = async ({ email, phone, password }) => {
     throw new ApiError(401, 'Invalid phone number or password');
   }
 
-  if (users.length > 1) {
+  const employeeUsers = users.filter((user) => user.accountRole === 'employee');
+  const loginCandidates =
+    employeeUsers.length > 0 ? employeeUsers : users;
+
+  if (loginCandidates.length > 1) {
     throw new ApiError(
       409,
       'Multiple accounts are linked to this phone number. Contact your administrator.'
     );
   }
 
-  const user = users[0];
+  const user = loginCandidates[0];
 
   if (!(await user.comparePassword(password))) {
     throw new ApiError(401, 'Invalid phone number or password');
