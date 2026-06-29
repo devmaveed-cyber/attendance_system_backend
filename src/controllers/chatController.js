@@ -2,11 +2,21 @@ const chatService = require('../services/chatService');
 
 const getIo = (req) => req.app.get('io');
 
-const emitChatEvent = (req, conversationId, event, payload) => {
+const emitToConversation = (req, conversationId, event, payload) => {
   const io = getIo(req);
   if (!io) return;
   io.to(`conversation:${conversationId}`).emit(event, payload);
-  io.to('chat:admins').emit(event, payload);
+};
+
+const emitConversationUpdatedToAdmins = (req, conversation) => {
+  const io = getIo(req);
+  if (!io) return;
+  io.to('chat:admins').emit('chat:conversation_updated', conversation);
+};
+
+const emitChatMessage = (req, conversationId, payload) => {
+  emitToConversation(req, conversationId, 'chat:message', payload);
+  emitConversationUpdatedToAdmins(req, payload.conversation);
 };
 
 const listConversations = async (req, res) => {
@@ -61,7 +71,7 @@ const sendMessage = async (req, res) => {
     req.user,
     conversationId,
     req.body.text,
-    (payload) => emitChatEvent(req, conversationId, 'chat:message', payload)
+    (payload) => emitChatMessage(req, conversationId, payload)
   );
 
   res.status(201).json({
@@ -79,7 +89,7 @@ const sendEmployeeMessage = async (req, res) => {
     req.user,
     conversationId,
     req.body.text,
-    (payload) => emitChatEvent(req, conversationId, 'chat:message', payload)
+    (payload) => emitChatMessage(req, conversationId, payload)
   );
 
   res.status(201).json({
@@ -93,8 +103,7 @@ const markRead = async (req, res) => {
   const conversation = await chatService.markConversationRead(
     req.user,
     req.params.id,
-    (payload) =>
-      emitChatEvent(req, req.params.id, 'chat:conversation_updated', payload)
+    (payload) => emitConversationUpdatedToAdmins(req, payload)
   );
 
   res.status(200).json({
