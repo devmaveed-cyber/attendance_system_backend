@@ -140,6 +140,7 @@ const deleteGroup = async (groupId) => {
 };
 
 module.exports = {
+  ensureBootstrapGroups,
   getAllGroups,
   resolveActiveGroup,
   createGroup,

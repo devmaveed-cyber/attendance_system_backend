@@ -22,6 +22,22 @@ const createBranchRules = [
     .optional()
     .isFloat({ min: 10 })
     .withMessage('radiusMeters must be at least 10'),
+  body('geofenceType')
+    .optional()
+    .isIn(['circle', 'polygon'])
+    .withMessage('geofenceType must be circle or polygon'),
+  body('boundaryPoints')
+    .optional()
+    .isArray()
+    .withMessage('boundaryPoints must be an array'),
+  body('boundaryPoints.*.lat')
+    .optional()
+    .isFloat()
+    .withMessage('Each boundary point must have a valid latitude'),
+  body('boundaryPoints.*.lng')
+    .optional()
+    .isFloat()
+    .withMessage('Each boundary point must have a valid longitude'),
   timeFieldRule('shiftStartTime'),
   timeFieldRule('shiftEndTime'),
   body('graceMinutesLate')
@@ -50,6 +66,22 @@ const updateBranchRules = [
     .optional()
     .isFloat({ min: 10 })
     .withMessage('radiusMeters must be at least 10'),
+  body('geofenceType')
+    .optional()
+    .isIn(['circle', 'polygon'])
+    .withMessage('geofenceType must be circle or polygon'),
+  body('boundaryPoints')
+    .optional()
+    .isArray()
+    .withMessage('boundaryPoints must be an array'),
+  body('boundaryPoints.*.lat')
+    .optional()
+    .isFloat()
+    .withMessage('Each boundary point must have a valid latitude'),
+  body('boundaryPoints.*.lng')
+    .optional()
+    .isFloat()
+    .withMessage('Each boundary point must have a valid longitude'),
   body('isActive')
     .optional()
     .isBoolean()

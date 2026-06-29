@@ -2,10 +2,12 @@ const APP_SECTIONS = [
   'dashboard',
   'attendance',
   'employees',
+  'payroll',
   'branches',
   'nfcTags',
   'groups',
   'users',
+  'chat',
 ];
 
 const normalizeSections = (sections) => {

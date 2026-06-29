@@ -26,6 +26,10 @@
     "mongoose": "^8.9.3",
     "morgan": "^1.10.0",
     "multer": "^2.2.0",
+    "socket.io": "^4.8.3",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

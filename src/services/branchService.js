@@ -13,6 +13,36 @@ const {
   DEFAULT_SHIFT_END,
   DEFAULT_GRACE_MINUTES_LATE,
 } = require('../constants/attendanceConstants');
+const { normalizeBoundaryPoints } = require('../utils/geofence');
+
+const resolveGeofenceFields = (payload, existingBranch = null) => {
+  const geofenceType =
+    payload.geofenceType !== undefined
+      ? payload.geofenceType
+      : existingBranch?.geofenceType ?? 'circle';
+
+  if (!['circle', 'polygon'].includes(geofenceType)) {
+    throw new ApiError(400, 'geofenceType must be circle or polygon');
+  }
+
+  let boundaryPoints =
+    payload.boundaryPoints !== undefined
+      ? normalizeBoundaryPoints(payload.boundaryPoints)
+      : normalizeBoundaryPoints(existingBranch?.boundaryPoints ?? []);
+
+  if (geofenceType === 'polygon') {
+    if (boundaryPoints.length < 3) {
+      throw new ApiError(
+        400,
+        'Polygon geofence requires at least 3 boundary points'
+      );
+    }
+  } else {
+    boundaryPoints = [];
+  }
+
+  return { geofenceType, boundaryPoints };
+};
 
 const resolveShiftFields = (payload, existingBranch = null) => {
   const shiftStartTime =
@@ -63,6 +93,8 @@ const createBranch = async ({
   latitude,
   longitude,
   radiusMeters,
+  geofenceType,
+  boundaryPoints,
   shiftStartTime,
   shiftEndTime,
   graceMinutesLate,
@@ -72,6 +104,10 @@ const createBranch = async ({
     shiftEndTime,
     graceMinutesLate,
   });
+  const geofenceFields = resolveGeofenceFields({
+    geofenceType,
+    boundaryPoints,
+  });
 
   const branch = await Branch.create({
     name,
@@ -79,6 +115,7 @@ const createBranch = async ({
     latitude,
     longitude,
     radiusMeters,
+    ...geofenceFields,
     ...shiftFields,
   });
 
@@ -111,6 +148,10 @@ const updateBranch = async (branchId, payload) => {
   if (payload.radiusMeters !== undefined) {
     branch.radiusMeters = payload.radiusMeters;
   }
+
+  const geofenceFields = resolveGeofenceFields(payload, branch);
+  branch.geofenceType = geofenceFields.geofenceType;
+  branch.boundaryPoints = geofenceFields.boundaryPoints;
 
   if (payload.isActive !== undefined) {
     branch.isActive = payload.isActive;

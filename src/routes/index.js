@@ -13,6 +13,8 @@ const branchController = require('../controllers/branchController');
 const employeeController = require('../controllers/employeeController');
 const nfcTagController = require('../controllers/nfcTagController');
 const attendanceController = require('../controllers/attendanceController');
+const payrollController = require('../controllers/payrollController');
+const chatController = require('../controllers/chatController');
 const {
   registerRules,
   loginRules,
@@ -51,6 +53,18 @@ const {
   correctAttendanceRules,
   clearAttendanceRules,
 } = require('../validators/attendanceValidator');
+const {
+  createPayrollRules,
+  updatePayrollRules,
+  deletePayrollRules,
+} = require('../validators/payrollValidator');
+const {
+  listMessagesRules,
+  sendMessageRules,
+  employeeSendMessageRules,
+  markReadRules,
+  getConversationRules,
+} = require('../validators/chatValidator');
 
 const router = express.Router();
 
@@ -185,6 +199,40 @@ router.delete(
   asyncHandler(employeeController.deleteEmployee)
 );
 
+router.get(
+  '/payroll/me',
+  protect,
+  requireEmployee,
+  asyncHandler(payrollController.getMyPayrollRecords)
+);
+
+router.use('/payroll', protect, requireAdmin, requireAnySection('payroll'));
+
+router
+  .route('/payroll')
+  .get(asyncHandler(payrollController.getPayrollRecords))
+  .post(createPayrollRules, validate, asyncHandler(payrollController.createPayrollRecord));
+
+router.post(
+  '/payroll/bulk-import',
+  excelUpload.single('file'),
+  asyncHandler(payrollController.bulkImportPayroll)
+);
+
+router.put(
+  '/payroll/:id',
+  updatePayrollRules,
+  validate,
+  asyncHandler(payrollController.updatePayrollRecord)
+);
+
+router.delete(
+  '/payroll/:id',
+  deletePayrollRules,
+  validate,
+  asyncHandler(payrollController.deletePayrollRecord)
+);
+
 router.use('/nfc-tags', protect);
 
 router.get(
@@ -264,6 +312,54 @@ router.delete(
   clearAttendanceRules,
   validate,
   asyncHandler(attendanceController.clearAttendance)
+);
+
+router.use('/chat', protect);
+
+router.get('/chat/unread-count', asyncHandler(chatController.getUnreadCount));
+
+router.post(
+  '/chat/support',
+  requireEmployee,
+  asyncHandler(chatController.openSupportConversation)
+);
+
+router.post(
+  '/chat/messages',
+  requireEmployee,
+  employeeSendMessageRules,
+  validate,
+  asyncHandler(chatController.sendEmployeeMessage)
+);
+
+router.get('/chat/conversations', asyncHandler(chatController.listConversations));
+
+router.get(
+  '/chat/conversations/:id',
+  getConversationRules,
+  validate,
+  asyncHandler(chatController.getConversation)
+);
+
+router.get(
+  '/chat/conversations/:id/messages',
+  listMessagesRules,
+  validate,
+  asyncHandler(chatController.getMessages)
+);
+
+router.post(
+  '/chat/conversations/:id/messages',
+  sendMessageRules,
+  validate,
+  asyncHandler(chatController.sendMessage)
+);
+
+router.put(
+  '/chat/conversations/:id/read',
+  markReadRules,
+  validate,
+  asyncHandler(chatController.markRead)
 );
 
 module.exports = router;

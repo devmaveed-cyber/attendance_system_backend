@@ -5,7 +5,7 @@ const ApiError = require('../utils/ApiError');
 const {
   distanceMeters,
   formatDistance,
-  isInsideGeofence,
+  isInsideBranchGeofence,
 } = require('../utils/geofence');
 const { sanitizeAttendanceRecord } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
@@ -74,16 +74,22 @@ const resolveEmployeeForMarking = async (userId) => {
 };
 
 const validateGeofence = ({ latitude, longitude, branch }) => {
-  const inside = isInsideGeofence({
+  const inside = isInsideBranchGeofence({
     userLat: latitude,
     userLng: longitude,
-    branchLat: branch.latitude,
-    branchLng: branch.longitude,
-    radiusMeters: branch.radiusMeters,
+    branch,
   });
 
   if (inside) {
     return;
+  }
+
+  const geofenceType = branch.geofenceType || 'circle';
+  if (geofenceType === 'polygon') {
+    throw new ApiError(
+      400,
+      'You are outside the branch boundary. Move inside the marked area to mark attendance.'
+    );
   }
 
   const dist = distanceMeters({

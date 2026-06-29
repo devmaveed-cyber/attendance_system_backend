@@ -46,6 +46,13 @@ const sanitizeBranch = (branch) => ({
   latitude: branch.latitude,
   longitude: branch.longitude,
   radiusMeters: branch.radiusMeters,
+  geofenceType: branch.geofenceType || 'circle',
+  boundaryPoints: Array.isArray(branch.boundaryPoints)
+    ? branch.boundaryPoints.map((point) => ({
+        lat: point.lat,
+        lng: point.lng,
+      }))
+    : [],
   isActive: branch.isActive,
   shiftStartTime: branch.shiftStartTime,
   shiftEndTime: branch.shiftEndTime,

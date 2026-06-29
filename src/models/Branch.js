@@ -34,6 +34,20 @@ const branchSchema = new mongoose.Schema(
       default: DEFAULT_BRANCH_RADIUS_METERS,
       min: [10, 'Radius must be at least 10 meters'],
     },
+    geofenceType: {
+      type: String,
+      enum: ['circle', 'polygon'],
+      default: 'circle',
+    },
+    boundaryPoints: {
+      type: [
+        {
+          lat: { type: Number, required: true },
+          lng: { type: Number, required: true },
+        },
+      ],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       default: true,
