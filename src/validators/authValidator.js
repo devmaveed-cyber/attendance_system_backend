@@ -81,10 +81,35 @@ const deviceBindingRules = [
     .withMessage('platform must be ios, android, or unknown'),
 ];
 
+const forgotPasswordSendOtpRules = [
+  phoneBodyRule('phone', { required: true }),
+];
+
+const forgotPasswordVerifyOtpRules = [
+  phoneBodyRule('phone', { required: true }),
+  body('otp')
+    .trim()
+    .notEmpty()
+    .withMessage('OTP is required')
+    .matches(/^\d{6}$/)
+    .withMessage('Enter the 6-digit OTP'),
+];
+
+const forgotPasswordResetRules = [
+  phoneBodyRule('phone', { required: true }),
+  body('resetToken').trim().notEmpty().withMessage('Reset token is required'),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+];
+
 module.exports = {
   registerRules,
   loginRules,
   deviceTokenRules,
   removeDeviceTokenRules,
   deviceBindingRules,
+  forgotPasswordSendOtpRules,
+  forgotPasswordVerifyOtpRules,
+  forgotPasswordResetRules,
 };

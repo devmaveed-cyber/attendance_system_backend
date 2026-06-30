@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test:device-binding": "node --test scripts/test-device-binding.js",
+    "test:forgot-password": "node --test scripts/test-forgot-password.js",
     "test:dashboard-stats": "node --test scripts/test-dashboard-stats.js",
     "test:dashboard-summary": "node scripts/test-dashboard-summary.js"
   },

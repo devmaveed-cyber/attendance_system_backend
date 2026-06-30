@@ -23,6 +23,9 @@ const {
   deviceTokenRules,
   removeDeviceTokenRules,
   deviceBindingRules,
+  forgotPasswordSendOtpRules,
+  forgotPasswordVerifyOtpRules,
+  forgotPasswordResetRules,
 } = require('../validators/authValidator');
 const {
   createGroupRules,
@@ -95,6 +98,27 @@ router.post(
   loginRules,
   validate,
   asyncHandler(authController.login)
+);
+
+router.post(
+  '/auth/forgot-password/send-otp',
+  forgotPasswordSendOtpRules,
+  validate,
+  asyncHandler(authController.sendForgotPasswordOtp)
+);
+
+router.post(
+  '/auth/forgot-password/verify-otp',
+  forgotPasswordVerifyOtpRules,
+  validate,
+  asyncHandler(authController.verifyForgotPasswordOtp)
+);
+
+router.post(
+  '/auth/forgot-password/reset',
+  forgotPasswordResetRules,
+  validate,
+  asyncHandler(authController.resetForgotPassword)
 );
 
 router.get('/auth/me', protect, asyncHandler(authController.getMe));

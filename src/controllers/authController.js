@@ -1,6 +1,7 @@
 const authService = require('../services/authService');
 const deviceTokenService = require('../services/deviceTokenService');
 const deviceBindingService = require('../services/deviceBindingService');
+const forgotPasswordService = require('../services/forgotPasswordService');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
@@ -80,6 +81,42 @@ const registerDeviceBinding = async (req, res) => {
   });
 };
 
+const sendForgotPasswordOtp = async (req, res) => {
+  const result = await forgotPasswordService.sendOtp(req.body.phone);
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP sent successfully',
+    data: result,
+  });
+};
+
+const verifyForgotPasswordOtp = async (req, res) => {
+  const result = await forgotPasswordService.verifyOtp(
+    req.body.phone,
+    req.body.otp
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'OTP verified successfully',
+    data: result,
+  });
+};
+
+const resetForgotPassword = async (req, res) => {
+  await forgotPasswordService.resetPassword(
+    req.body.phone,
+    req.body.resetToken,
+    req.body.newPassword
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Password updated successfully',
+  });
+};
+
 module.exports = {
   register,
   login,
@@ -87,4 +124,7 @@ module.exports = {
   registerDeviceToken,
   removeDeviceToken,
   registerDeviceBinding,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetForgotPassword,
 };
