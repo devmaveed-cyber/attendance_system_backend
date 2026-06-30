@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
+const normalizeDeviceId = (deviceId) => String(deviceId || '').trim().toLowerCase();
+
 /**
  * Enforces that an employee can only mark attendance from the single device
  * their account is bound to.
@@ -18,7 +20,7 @@ const enforceDeviceBinding = async (
   employee,
   { deviceId, deviceName, platform } = {}
 ) => {
-  const normalizedId = String(deviceId || '').trim();
+  const normalizedId = normalizeDeviceId(deviceId);
 
   if (!normalizedId) {
     throw new ApiError(
@@ -27,8 +29,9 @@ const enforceDeviceBinding = async (
     );
   }
 
-  const bound = employee.boundDevice;
-  const hasBinding = Boolean(bound && bound.deviceId);
+  const bound = employee.boundDevice || {};
+  const hasBinding = Boolean(bound.deviceId);
+  const boundId = normalizeDeviceId(bound.deviceId);
 
   if (!hasBinding) {
     employee.boundDevice = {
@@ -41,7 +44,7 @@ const enforceDeviceBinding = async (
     return { bound: true, justRegistered: true };
   }
 
-  if (bound.deviceId !== normalizedId) {
+  if (boundId !== normalizedId) {
     throw new ApiError(
       403,
       'This phone is not registered for your account. You can only log in from your registered device. Contact HR to reset your device.'
@@ -53,8 +56,10 @@ const enforceDeviceBinding = async (
   const nextPlatform = String(platform || '').trim();
   if (
     (nextName && nextName !== bound.deviceName) ||
-    (nextPlatform && nextPlatform !== bound.platform)
+    (nextPlatform && nextPlatform !== bound.platform) ||
+    bound.deviceId !== boundId
   ) {
+    bound.deviceId = boundId;
     bound.deviceName = nextName || bound.deviceName;
     bound.platform = nextPlatform || bound.platform;
     await employee.save();
