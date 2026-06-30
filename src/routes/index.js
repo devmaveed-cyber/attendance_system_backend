@@ -43,6 +43,7 @@ const {
   createEmployeeRules,
   updateEmployeeRules,
   deleteEmployeeRules,
+  employeeIdRule,
 } = require('../validators/employeeValidator');
 const {
   listNfcTagsRules,
@@ -239,6 +240,13 @@ router.delete(
   deleteEmployeeRules,
   validate,
   asyncHandler(employeeController.deleteEmployee)
+);
+
+router.delete(
+  '/employees/:id/device',
+  employeeIdRule,
+  validate,
+  asyncHandler(employeeController.resetEmployeeDevice)
 );
 
 router.get(

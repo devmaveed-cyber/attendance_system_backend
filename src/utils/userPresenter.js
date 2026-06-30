@@ -23,6 +23,12 @@ const sanitizeUser = (user) => ({
   manager: user.manager || '',
   isActive: user.isActive,
   accountRole: user.accountRole,
+  boundDevice: {
+    deviceId: user.boundDevice?.deviceId || '',
+    deviceName: user.boundDevice?.deviceName || '',
+    platform: user.boundDevice?.platform || '',
+    boundAt: user.boundDevice?.boundAt || null,
+  },
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

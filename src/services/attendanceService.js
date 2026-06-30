@@ -20,6 +20,7 @@ const {
 const { scheduleDayRebuild } = require('./dashboardStatsService');
 const branchService = require('./branchService');
 const nfcTagService = require('./nfcTagService');
+const deviceBindingService = require('./deviceBindingService');
 
 const buildRecordId = (userId, dateKey) => `${userId}_${dateKey}`;
 
@@ -202,7 +203,18 @@ const markAttendanceForEmployee = async (
 
 const markAttendanceNfc = async (
   requester,
-  { type, tagUid, nfcTagId, latitude, longitude, accuracy, dateKey }
+  {
+    type,
+    tagUid,
+    nfcTagId,
+    latitude,
+    longitude,
+    accuracy,
+    dateKey,
+    deviceId,
+    deviceName,
+    platform,
+  }
 ) => {
   if (requester.accountRole !== 'employee') {
     throw new ApiError(403, 'Only employee accounts can mark their own attendance');
@@ -233,6 +245,11 @@ const markAttendanceNfc = async (
   }
 
   const employee = await resolveEmployee(requester._id);
+  await deviceBindingService.enforceDeviceBinding(employee, {
+    deviceId,
+    deviceName,
+    platform,
+  });
   const branch = await branchService.resolveActiveBranch(tag.branchId);
   validateGeofence({ latitude, longitude, branch });
 

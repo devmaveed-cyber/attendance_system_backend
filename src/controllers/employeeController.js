@@ -1,5 +1,6 @@
 const employeeService = require('../services/employeeService');
 const bulkImportService = require('../services/bulkImportService');
+const deviceBindingService = require('../services/deviceBindingService');
 const ApiError = require('../utils/ApiError');
 
 const getEmployees = async (req, res) => {
@@ -65,10 +66,23 @@ const deleteEmployee = async (req, res) => {
   });
 };
 
+const resetEmployeeDevice = async (req, res) => {
+  const result = await deviceBindingService.resetDeviceForEmployee(
+    req.params.id
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Employee device reset successfully',
+    data: result,
+  });
+};
+
 module.exports = {
   getEmployees,
   createEmployee,
   updateEmployee,
   bulkImportEmployees,
   deleteEmployee,
+  resetEmployeeDevice,
 };

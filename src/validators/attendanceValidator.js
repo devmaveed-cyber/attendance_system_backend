@@ -70,6 +70,17 @@ const markNfcAttendanceRules = [
     .trim()
     .notEmpty()
     .withMessage('tagUid cannot be empty'),
+  body('deviceId')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('deviceId is too long'),
+  body('deviceName').optional().trim().isLength({ max: 200 }),
+  body('platform')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isIn(['ios', 'android', 'unknown'])
+    .withMessage('platform must be ios, android, or unknown'),
   body().custom((_, { req }) => {
     if (!req.body.nfcTagId && !req.body.tagUid) {
       throw new Error('nfcTagId or tagUid is required');

@@ -141,6 +141,12 @@ const userSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    boundDevice: {
+      deviceId: { type: String, trim: true, default: '' },
+      deviceName: { type: String, trim: true, default: '' },
+      platform: { type: String, trim: true, default: '' },
+      boundAt: { type: Date, default: null },
+    },
   },
   { timestamps: true }
 );
