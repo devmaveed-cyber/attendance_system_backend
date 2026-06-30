@@ -44,7 +44,7 @@ const enforceDeviceBinding = async (
   if (bound.deviceId !== normalizedId) {
     throw new ApiError(
       403,
-      'This phone is not registered for your account. You can only mark attendance from your registered device. Contact HR to reset your device.'
+      'This phone is not registered for your account. You can only log in from your registered device. Contact HR to reset your device.'
     );
   }
 
@@ -61,62 +61,6 @@ const enforceDeviceBinding = async (
   }
 
   return { bound: true, justRegistered: false };
-};
-
-/**
- * Registers the current device when the employee logs in (if unbound).
- * Does not throw on mismatch — returns status so login can stay successful
- * while attendance remains blocked on the wrong device.
- */
-const registerDeviceBinding = async (
-  employee,
-  { deviceId, deviceName, platform } = {}
-) => {
-  const normalizedId = String(deviceId || '').trim();
-
-  if (!normalizedId) {
-    throw new ApiError(
-      400,
-      'Device verification failed. Please update the app to the latest version and try again.'
-    );
-  }
-
-  const bound = employee.boundDevice;
-  const hasBinding = Boolean(bound && bound.deviceId);
-
-  if (!hasBinding) {
-    employee.boundDevice = {
-      deviceId: normalizedId,
-      deviceName: String(deviceName || '').trim(),
-      platform: String(platform || '').trim(),
-      boundAt: new Date(),
-    };
-    await employee.save();
-    return { bound: true, justRegistered: true, mismatch: false };
-  }
-
-  if (bound.deviceId !== normalizedId) {
-    return {
-      bound: false,
-      justRegistered: false,
-      mismatch: true,
-      message:
-        'This phone is not registered for your account. Contact HR to reset your device.',
-    };
-  }
-
-  const nextName = String(deviceName || '').trim();
-  const nextPlatform = String(platform || '').trim();
-  if (
-    (nextName && nextName !== bound.deviceName) ||
-    (nextPlatform && nextPlatform !== bound.platform)
-  ) {
-    bound.deviceName = nextName || bound.deviceName;
-    bound.platform = nextPlatform || bound.platform;
-    await employee.save();
-  }
-
-  return { bound: true, justRegistered: false, mismatch: false };
 };
 
 const resetDeviceForEmployee = async (employeeId) => {
@@ -146,6 +90,5 @@ const resetDeviceForEmployee = async (employeeId) => {
 
 module.exports = {
   enforceDeviceBinding,
-  registerDeviceBinding,
   resetDeviceForEmployee,
 };

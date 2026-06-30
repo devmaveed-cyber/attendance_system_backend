@@ -8,6 +8,7 @@ const { normalizePhone } = require('../utils/phoneUtils');
 const { findUsersByPhone, assertPhoneAvailable } = require('../utils/userPhone');
 const branchService = require('./branchService');
 const { ensureBootstrapGroups } = require('./groupService');
+const deviceBindingService = require('./deviceBindingService');
 
 const resolveAllowedSections = async (user) => {
   if (user.accountRole === 'employee') {
@@ -97,7 +98,23 @@ const register = async ({ name, email, password, phone }) => {
   return buildAuthPayload(user);
 };
 
-const login = async ({ email, phone, password }) => {
+const ensureEmployeeDeviceAccess = async (user, deviceContext = {}) => {
+  if (user.accountRole !== 'employee') {
+    return;
+  }
+
+  await deviceBindingService.enforceDeviceBinding(user, deviceContext);
+};
+
+const login = async ({
+  email,
+  phone,
+  password,
+  deviceId,
+  deviceName,
+  platform,
+}) => {
+  const deviceContext = { deviceId, deviceName, platform };
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
   if (normalizedEmail) {
@@ -110,6 +127,8 @@ const login = async ({ email, phone, password }) => {
     if (!user.isActive) {
       throw new ApiError(403, 'Account is disabled');
     }
+
+    await ensureEmployeeDeviceAccess(user, deviceContext);
 
     return buildAuthPayload(user);
   }
@@ -146,6 +165,8 @@ const login = async ({ email, phone, password }) => {
   if (!user.isActive) {
     throw new ApiError(403, 'Account is disabled');
   }
+
+  await ensureEmployeeDeviceAccess(user, deviceContext);
 
   return buildAuthPayload(user);
 };

@@ -28,6 +28,29 @@ const loginRules = [
 
     return true;
   }),
+  body('deviceId')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('deviceId is too long'),
+  body('deviceName').optional().trim().isLength({ max: 200 }),
+  body('platform')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isIn(['ios', 'android', 'unknown'])
+    .withMessage('platform must be ios, android, or unknown'),
+  body().custom((_value, { req }) => {
+    const hasPhone = String(req.body.phone || '').trim();
+    const hasDeviceId = String(req.body.deviceId || '').trim();
+
+    if (hasPhone && !hasDeviceId) {
+      throw new Error(
+        'deviceId is required. Please update the app to the latest version.'
+      );
+    }
+
+    return true;
+  }),
 ];
 
 const deviceTokenRules = [
