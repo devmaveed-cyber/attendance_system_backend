@@ -26,7 +26,7 @@ const createAnnouncement = async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: 'Announcement sent to all employees',
+    message: 'Announcement published. Notifications are being sent in the background.',
     data: result,
   });
 };

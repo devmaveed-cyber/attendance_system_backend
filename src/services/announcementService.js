@@ -99,7 +99,7 @@ const createAnnouncement = async (user, { title, body }) => {
     isActive: true,
   });
 
-  const pushSummary = await pushNotificationService.notifyAllEmployeesAnnouncement({
+  pushNotificationService.queueAnnouncementPush({
     title: trimmedTitle,
     body: trimmedBody,
     announcementId: announcement._id,
@@ -107,7 +107,7 @@ const createAnnouncement = async (user, { title, body }) => {
 
   return {
     announcement: sanitizeAnnouncement(announcement),
-    pushSummary,
+    pushSummary: { queued: true },
   };
 };
 

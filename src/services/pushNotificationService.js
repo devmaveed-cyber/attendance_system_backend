@@ -35,6 +35,57 @@ const removeInvalidTokens = async (userId, tokens) => {
   );
 };
 
+const buildAndroidConfig = (channelId) => ({
+  priority: 'high',
+  notification: {
+    channelId,
+    sound: 'default',
+  },
+});
+
+const processMulticastResponse = async (response, tokens, tokenOwners) => {
+  const alwaysPruneCodes = new Set([
+    'messaging/registration-token-not-registered',
+    'messaging/invalid-registration-token',
+    'messaging/invalid-argument',
+  ]);
+  const envMismatchCodes = new Set([
+    'messaging/third-party-auth-error',
+    'messaging/mismatched-credential',
+  ]);
+
+  const hadSuccess = response.successCount > 0;
+  const invalidByUser = new Map();
+
+  response.responses.forEach((result, index) => {
+    if (result.success) return;
+
+    const code = result.error?.code;
+    if (
+      alwaysPruneCodes.has(code) ||
+      (hadSuccess && envMismatchCodes.has(code))
+    ) {
+      const token = tokens[index];
+      const owners = tokenOwners.get(token) || [];
+      owners.forEach((userId) => {
+        if (!invalidByUser.has(userId)) invalidByUser.set(userId, []);
+        invalidByUser.get(userId).push(token);
+      });
+    }
+  });
+
+  await Promise.all(
+    [...invalidByUser.entries()].map(([userId, invalidTokens]) =>
+      removeInvalidTokens(userId, invalidTokens)
+    )
+  );
+
+  return {
+    sent: response.successCount,
+    failed: response.failureCount,
+  };
+};
+
 const sendToUserTokens = async (
   userId,
   { title, body, data = {}, androidChannelId = 'hr_chat_messages' }
@@ -143,14 +194,6 @@ const notifyEmployeeChatMessage = async ({
   });
 };
 
-const buildAndroidConfig = (channelId) => ({
-  priority: 'high',
-  notification: {
-    channelId,
-    sound: 'default',
-  },
-});
-
 const notifyAllEmployeesAnnouncement = async ({ title, body, announcementId }) => {
   if (!isEnabled()) {
     return { sent: 0, skipped: true, recipients: 0 };
@@ -159,27 +202,70 @@ const notifyAllEmployeesAnnouncement = async ({ title, body, announcementId }) =
   const employees = await User.find({
     accountRole: 'employee',
     isActive: true,
-  }).select('_id');
+    'fcmTokens.0': { $exists: true },
+  }).select('_id fcmTokens');
 
   const preview = String(body || '').trim();
   const notificationBody =
     preview.length > 160 ? `${preview.slice(0, 157)}...` : preview || 'New HR announcement';
+  const notificationTitle = String(title || 'HR Announcement').trim();
+  const stringData = {
+    type: 'announcement',
+    announcementId: String(announcementId),
+  };
+
+  const tokenOwners = new Map();
+  const tokens = [];
+
+  employees.forEach((employee) => {
+    const uniqueForUser = new Set(
+      (employee.fcmTokens || []).map((entry) => entry.token).filter(Boolean)
+    );
+
+    uniqueForUser.forEach((token) => {
+      tokens.push(token);
+      if (!tokenOwners.has(token)) {
+        tokenOwners.set(token, []);
+      }
+      tokenOwners.get(token).push(employee._id);
+    });
+  });
+
+  const uniqueTokens = [...new Set(tokens)];
+  if (!uniqueTokens.length) {
+    return { sent: 0, failed: 0, recipients: employees.length, skipped: false };
+  }
 
   let sent = 0;
   let failed = 0;
+  const batchSize = 500;
 
-  for (const employee of employees) {
-    const result = await sendToUserTokens(employee._id, {
-      title: String(title || 'HR Announcement').trim(),
-      body: notificationBody,
-      data: {
-        type: 'announcement',
-        announcementId: String(announcementId),
+  for (let index = 0; index < uniqueTokens.length; index += batchSize) {
+    const batch = uniqueTokens.slice(index, index + batchSize);
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens: batch,
+      notification: { title: notificationTitle, body: notificationBody },
+      data: stringData,
+      android: buildAndroidConfig('hr_announcements'),
+      apns: {
+        headers: {
+          'apns-priority': '10',
+          'apns-push-type': 'alert',
+          'apns-topic': 'com.ecodrive.attendancemanagement',
+        },
+        payload: {
+          aps: {
+            alert: { title: notificationTitle, body: notificationBody },
+            sound: 'default',
+            badge: 1,
+          },
+        },
       },
-      androidChannelId: 'hr_announcements',
     });
-    sent += result.sent || 0;
-    failed += result.failed || 0;
+
+    const summary = await processMulticastResponse(response, batch, tokenOwners);
+    sent += summary.sent;
+    failed += summary.failed;
   }
 
   return {
@@ -190,9 +276,28 @@ const notifyAllEmployeesAnnouncement = async ({ title, body, announcementId }) =
   };
 };
 
+const queueAnnouncementPush = ({ title, body, announcementId }) => {
+  setImmediate(() => {
+    notifyAllEmployeesAnnouncement({ title, body, announcementId })
+      .then((summary) => {
+        console.log(
+          `Announcement push queued for ${announcementId}:`,
+          JSON.stringify(summary)
+        );
+      })
+      .catch((error) => {
+        console.error(
+          `Announcement push failed for ${announcementId}:`,
+          error.message
+        );
+      });
+  });
+};
+
 module.exports = {
   isEnabled,
   notifyEmployeeChatMessage,
   notifyAllEmployeesAnnouncement,
+  queueAnnouncementPush,
   sendToUserTokens,
 };
