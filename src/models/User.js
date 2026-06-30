@@ -131,6 +131,16 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    fcmTokens: {
+      type: [
+        {
+          token: { type: String, required: true, trim: true },
+          platform: { type: String, trim: true, default: 'unknown' },
+          updatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

@@ -8,6 +8,7 @@ const APP_SECTIONS = [
   'groups',
   'users',
   'chat',
+  'announcements',
 ];
 
 const normalizeSections = (sections) => {

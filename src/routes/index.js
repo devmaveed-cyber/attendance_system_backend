@@ -15,9 +15,12 @@ const nfcTagController = require('../controllers/nfcTagController');
 const attendanceController = require('../controllers/attendanceController');
 const payrollController = require('../controllers/payrollController');
 const chatController = require('../controllers/chatController');
+const announcementController = require('../controllers/announcementController');
 const {
   registerRules,
   loginRules,
+  deviceTokenRules,
+  removeDeviceTokenRules,
 } = require('../validators/authValidator');
 const {
   createGroupRules,
@@ -65,6 +68,14 @@ const {
   markReadRules,
   getConversationRules,
 } = require('../validators/chatValidator');
+const {
+  listAnnouncementsRules,
+  createAnnouncementRules,
+  deleteAnnouncementRules,
+  listMyAnnouncementsRules,
+  getMyAnnouncementRules,
+  markReadRules: announcementMarkReadRules,
+} = require('../validators/announcementValidator');
 
 const router = express.Router();
 
@@ -83,6 +94,24 @@ router.post(
 );
 
 router.get('/auth/me', protect, asyncHandler(authController.getMe));
+
+router.put(
+  '/auth/device-token',
+  protect,
+  requireEmployee,
+  deviceTokenRules,
+  validate,
+  asyncHandler(authController.registerDeviceToken)
+);
+
+router.delete(
+  '/auth/device-token',
+  protect,
+  requireEmployee,
+  removeDeviceTokenRules,
+  validate,
+  asyncHandler(authController.removeDeviceToken)
+);
 
 router.use('/groups', protect, requireAdmin);
 
@@ -360,6 +389,66 @@ router.put(
   markReadRules,
   validate,
   asyncHandler(chatController.markRead)
+);
+
+router.get(
+  '/announcements/me/unread-count',
+  protect,
+  requireEmployee,
+  asyncHandler(announcementController.getUnreadCount)
+);
+
+router.get(
+  '/announcements/me',
+  protect,
+  requireEmployee,
+  listMyAnnouncementsRules,
+  validate,
+  asyncHandler(announcementController.listMyAnnouncements)
+);
+
+router.get(
+  '/announcements/me/:id',
+  protect,
+  requireEmployee,
+  getMyAnnouncementRules,
+  validate,
+  asyncHandler(announcementController.getMyAnnouncement)
+);
+
+router.put(
+  '/announcements/me/:id/read',
+  protect,
+  requireEmployee,
+  announcementMarkReadRules,
+  validate,
+  asyncHandler(announcementController.markRead)
+);
+
+router.use('/announcements', protect, requireAdmin);
+
+router.get(
+  '/announcements',
+  requireAnySection('announcements'),
+  listAnnouncementsRules,
+  validate,
+  asyncHandler(announcementController.listAnnouncements)
+);
+
+router.post(
+  '/announcements',
+  requireAnySection('announcements'),
+  createAnnouncementRules,
+  validate,
+  asyncHandler(announcementController.createAnnouncement)
+);
+
+router.delete(
+  '/announcements/:id',
+  requireAnySection('announcements'),
+  deleteAnnouncementRules,
+  validate,
+  asyncHandler(announcementController.deleteAnnouncement)
 );
 
 module.exports = router;

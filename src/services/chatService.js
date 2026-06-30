@@ -6,6 +6,7 @@ const {
   sanitizeConversation,
   sanitizeMessage,
 } = require('../utils/chatPresenter');
+const pushNotificationService = require('./pushNotificationService');
 
 const supportConversationId = (employeeId) => `support_${String(employeeId).trim()}`;
 
@@ -206,6 +207,19 @@ const sendMessage = async (user, conversationId, text, emit) => {
 
   if (typeof emit === 'function') {
     emit(payload);
+  }
+
+  if (senderRole === 'admin' && conversation.employeeId) {
+    pushNotificationService
+      .notifyEmployeeChatMessage({
+        employeeId: conversation.employeeId,
+        senderName: user.name?.trim() || user._id,
+        text: trimmed,
+        conversationId,
+      })
+      .catch((error) => {
+        console.error('Failed to send chat push notification:', error.message);
+      });
   }
 
   return payload;

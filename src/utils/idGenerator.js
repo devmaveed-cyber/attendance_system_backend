@@ -8,6 +8,7 @@ const ID_PREFIX = {
   BRANCH: 'BRN',
   NFC: 'NFC',
   PAYROLL: 'PAY',
+  ANNOUNCEMENT: 'ANN',
 };
 
 const DIGIT_LENGTH = 7;
@@ -20,6 +21,7 @@ const ID_PATTERN = {
   BRANCH: /^BRN\d{7}$/,
   NFC: /^NFC\d{7}$/,
   PAYROLL: /^PAY\d{7}$/,
+  ANNOUNCEMENT: /^ANN\d{7}$/,
 };
 
 const generateCustomId = async (prefix) => {

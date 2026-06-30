@@ -30,4 +30,22 @@ const loginRules = [
   }),
 ];
 
-module.exports = { registerRules, loginRules };
+const deviceTokenRules = [
+  body('token').trim().notEmpty().withMessage('Device token is required'),
+  body('platform')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isIn(['ios', 'android', 'unknown'])
+    .withMessage('Platform must be ios, android, or unknown'),
+];
+
+const removeDeviceTokenRules = [
+  body('token').trim().notEmpty().withMessage('Device token is required'),
+];
+
+module.exports = {
+  registerRules,
+  loginRules,
+  deviceTokenRules,
+  removeDeviceTokenRules,
+};
