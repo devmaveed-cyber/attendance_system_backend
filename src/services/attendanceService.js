@@ -11,21 +11,20 @@ const { sanitizeAttendanceRecord } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
 const { MAX_ALLOWED_ACCURACY_METERS, ALLOW_PAST_DATE_ATTENDANCE } = require('../constants/attendanceConstants');
 const { evaluateShiftStatus } = require('../utils/shiftUtils');
+const {
+  dateKeyFor,
+  listDateKeysInRange,
+  buildOverviewSummary,
+  buildOverviewRows,
+} = require('../utils/attendanceOverviewBuilder');
+const { scheduleDayRebuild } = require('./dashboardStatsService');
 const branchService = require('./branchService');
 const nfcTagService = require('./nfcTagService');
 
 const buildRecordId = (userId, dateKey) => `${userId}_${dateKey}`;
 
-const dateKeyFor = (date = new Date()) => {
-  const y = date.getFullYear().toString().padStart(4, '0');
-  const m = (date.getMonth() + 1).toString().padStart(2, '0');
-  const d = date.getDate().toString().padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
-const parseDateKey = (dateKey) => {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  return new Date(year, month - 1, day);
+const triggerDashboardDayRebuild = (dateKey) => {
+  scheduleDayRebuild(dateKey);
 };
 
 const resolveAttendanceDateKey = (dateKey) => {
@@ -175,6 +174,8 @@ const markAttendanceForEmployee = async (
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
 
+    triggerDashboardDayRebuild(resolvedDateKey);
+
     return sanitizeAttendanceRecord(record);
   }
 
@@ -193,6 +194,8 @@ const markAttendanceForEmployee = async (
   existing.checkOutMethod = markMethod;
   existing.checkOutNfcUid = tagUid || undefined;
   await existing.save();
+
+  triggerDashboardDayRebuild(resolvedDateKey);
 
   return sanitizeAttendanceRecord(existing);
 };
@@ -280,52 +283,6 @@ const getTodayRecord = async (requester, employeeId) => {
   return enrichAttendanceRecord(record, branch);
 };
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-const deriveStatus = (record) => {
-  if (!record?.checkInAt) {
-    return 'absent';
-  }
-  if (!record.checkOutAt) {
-    return 'checked_in';
-  }
-  return 'checked_out';
-};
-
-const loadBranchMap = async (branchIds) => {
-  const uniqueIds = [...new Set(branchIds.filter(Boolean))];
-  if (uniqueIds.length === 0) {
-    return new Map();
-  }
-
-  const branches = await Branch.find({ _id: { $in: uniqueIds } });
-  return new Map(branches.map((branch) => [branch._id, branch]));
-};
-
-const buildOverviewRowFields = (record, branch) => {
-  const shift = evaluateShiftStatus(record, branch);
-
-  return {
-    recordId: record?.recordId || record?._id || null,
-    checkInAt: record?.checkInAt ?? null,
-    checkOutAt: record?.checkOutAt ?? null,
-    checkInMethod: record?.checkInMethod ?? null,
-    checkOutMethod: record?.checkOutMethod ?? null,
-    isManualCorrected: Boolean(record?.correctedAt),
-    correctedByName: record?.correctedByName ?? null,
-    correctionReason: record?.correctionReason ?? null,
-    status: shift.status,
-    shiftStatus: shift.shiftStatus,
-    isLateCheckIn: shift.isLateCheckIn,
-    isEarlyCheckOut: shift.isEarlyCheckOut,
-    minutesLate: shift.minutesLate,
-    minutesEarlyCheckout: shift.minutesEarlyCheckout,
-    shiftStartTime: shift.shiftStartTime,
-    shiftEndTime: shift.shiftEndTime,
-    graceMinutesLate: shift.graceMinutesLate,
-  };
-};
-
 const enrichAttendanceRecord = (record, branch) => {
   const sanitized = sanitizeAttendanceRecord(record);
   const shift = evaluateShiftStatus(record, branch);
@@ -377,26 +334,6 @@ const resolveAdminEmployee = async (employeeId) => {
   return employee;
 };
 
-const formatDateKeyFromDate = (date) => {
-  const y = date.getFullYear().toString().padStart(4, '0');
-  const m = (date.getMonth() + 1).toString().padStart(2, '0');
-  const d = date.getDate().toString().padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
-const listDateKeysInRange = (startDate, endDate) => {
-  const keys = [];
-  const current = parseDateKey(startDate);
-  const end = parseDateKey(endDate);
-
-  while (current <= end) {
-    keys.push(formatDateKeyFromDate(current));
-    current.setDate(current.getDate() + 1);
-  }
-
-  return keys;
-};
-
 const matchesOverviewStatusFilter = (row, statusFilter) => {
   switch (statusFilter) {
     case 'checked_in':
@@ -406,40 +343,6 @@ const matchesOverviewStatusFilter = (row, statusFilter) => {
     default:
       return true;
   }
-};
-
-const buildOverviewSummary = (rows) => {
-  const employeeIds = new Set();
-
-  let checkedInCount = 0;
-  let checkedOutCount = 0;
-  let lateCount = 0;
-  let earlyLeaveCount = 0;
-
-  rows.forEach((row) => {
-    employeeIds.add(row.employeeId);
-    if (row.status !== 'absent') {
-      checkedInCount += 1;
-    }
-    if (row.status === 'checked_out') {
-      checkedOutCount += 1;
-    }
-    if (row.isLateCheckIn || String(row.shiftStatus || '').includes('late')) {
-      lateCount += 1;
-    }
-    if (row.isEarlyCheckOut) {
-      earlyLeaveCount += 1;
-    }
-  });
-
-  return {
-    totalRows: rows.length,
-    employeeCount: employeeIds.size,
-    checkedInCount,
-    checkedOutCount,
-    lateCount,
-    earlyLeaveCount,
-  };
 };
 
 const getOverview = async (
@@ -469,85 +372,25 @@ const getOverview = async (
     throw new ApiError(400, 'Date range cannot exceed 366 days');
   }
 
-  const employeeFilter = { accountRole: 'employee' };
-  if (!includeInactive) {
-    employeeFilter.isActive = true;
-  }
+  const restrictToEmployeeId =
+    requester.accountRole === 'employee' ? requester._id : null;
 
-  let employees = await User.find(employeeFilter).sort({ name: 1 });
-
-  if (requester.accountRole === 'employee') {
-    employees = employees.filter((employee) => employee._id === requester._id);
-  }
-
-  if (search?.trim()) {
-    const regex = new RegExp(escapeRegex(search.trim()), 'i');
-    employees = employees.filter(
-      (employee) =>
-        regex.test(employee.name) ||
-        regex.test(employee._id) ||
-        regex.test(employee.phone || '')
-    );
-  }
-
-  const userIds = employees.map((employee) => employee._id);
-  const records = await AttendanceRecord.find({
-    userId: { $in: userIds },
-    dateKey: { $gte: start, $lte: end },
-  });
-  const recordByUserAndDate = new Map(
-    records.map((record) => [`${record.userId}_${record.dateKey}`, record])
-  );
-
-  const branchFilter = branchId?.trim() || '';
-  const branchIds = employees.map((employee) => employee.branchId).filter(Boolean);
-  records.forEach((record) => {
-    if (record.branchId) {
-      branchIds.push(record.branchId);
-    }
-  });
-  const branchMap = await loadBranchMap(branchIds);
-
-  const rows = [];
-  dateKeys.forEach((dateKey) => {
-    employees.forEach((employee) => {
-      const record = recordByUserAndDate.get(`${employee._id}_${dateKey}`);
-      const rowBranchId = record?.branchId || employee.branchId || '';
-      const rowBranchName = record?.branchName || employee.branchName || '';
-
-      if (branchFilter && rowBranchId !== branchFilter) {
-        return;
-      }
-
-      const branch = branchMap.get(rowBranchId) || null;
-      const rowFields = buildOverviewRowFields(record, branch);
-
-      rows.push({
-        employeeId: employee._id,
-        name: employee.name,
-        phone: employee.phone || '',
-        branchId: rowBranchId,
-        branchName: rowBranchName,
-        isActive: employee.isActive,
-        dateKey,
-        ...rowFields,
-      });
-    });
+  const rows = await buildOverviewRows({
+    dateKeys,
+    includeInactive,
+    branchFilter: branchId,
+    search,
+    restrictToEmployeeId,
   });
 
   const branchOptionsMap = new Map();
-  dateKeys.forEach((dateKey) => {
-    employees.forEach((employee) => {
-      const record = recordByUserAndDate.get(`${employee._id}_${dateKey}`);
-      const rowBranchId = record?.branchId || employee.branchId || '';
-      const rowBranchName = record?.branchName || employee.branchName || '';
-      if (rowBranchId && !branchOptionsMap.has(rowBranchId)) {
-        branchOptionsMap.set(rowBranchId, {
-          branchId: rowBranchId,
-          name: rowBranchName || rowBranchId,
-        });
-      }
-    });
+  rows.forEach((row) => {
+    if (row.branchId && !branchOptionsMap.has(row.branchId)) {
+      branchOptionsMap.set(row.branchId, {
+        branchId: row.branchId,
+        name: row.branchName || row.branchId,
+      });
+    }
   });
 
   const summary = buildOverviewSummary(rows);
@@ -635,6 +478,7 @@ const correctAttendance = async (
     if (existing) {
       await AttendanceRecord.deleteOne({ _id: recordId });
     }
+    triggerDashboardDayRebuild(resolvedDateKey);
     return null;
   }
 
@@ -684,6 +528,8 @@ const correctAttendance = async (
     }
   );
 
+  triggerDashboardDayRebuild(resolvedDateKey);
+
   return enrichAttendanceRecord(record, branch);
 };
 
@@ -707,6 +553,7 @@ const clearAttendance = async (admin, { employeeId, dateKey, reason }) => {
   }
 
   await AttendanceRecord.deleteOne({ _id: recordId });
+  triggerDashboardDayRebuild(resolvedDateKey);
   return { employeeId, dateKey: resolvedDateKey, reason: trimmedReason };
 };
 

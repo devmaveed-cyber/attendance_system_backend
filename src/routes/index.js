@@ -16,6 +16,7 @@ const attendanceController = require('../controllers/attendanceController');
 const payrollController = require('../controllers/payrollController');
 const chatController = require('../controllers/chatController');
 const announcementController = require('../controllers/announcementController');
+const dashboardController = require('../controllers/dashboardController');
 const {
   registerRules,
   loginRules,
@@ -76,6 +77,7 @@ const {
   getMyAnnouncementRules,
   markReadRules: announcementMarkReadRules,
 } = require('../validators/announcementValidator');
+const { dashboardSummaryRules } = require('../validators/dashboardValidator');
 
 const router = express.Router();
 
@@ -94,6 +96,17 @@ router.post(
 );
 
 router.get('/auth/me', protect, asyncHandler(authController.getMe));
+
+router.use('/dashboard', protect);
+
+router.get(
+  '/dashboard/summary',
+  requireAdmin,
+  requireAnySection('dashboard'),
+  dashboardSummaryRules,
+  validate,
+  asyncHandler(dashboardController.getSummary)
+);
 
 router.put(
   '/auth/device-token',

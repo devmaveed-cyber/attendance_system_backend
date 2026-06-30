@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test:dashboard-stats": "node --test scripts/test-dashboard-stats.js",
+    "test:dashboard-summary": "node scripts/test-dashboard-summary.js"
   },
   "keywords": [
     "express",
