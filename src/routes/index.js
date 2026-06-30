@@ -22,6 +22,7 @@ const {
   loginRules,
   deviceTokenRules,
   removeDeviceTokenRules,
+  deviceBindingRules,
 } = require('../validators/authValidator');
 const {
   createGroupRules,
@@ -125,6 +126,15 @@ router.delete(
   removeDeviceTokenRules,
   validate,
   asyncHandler(authController.removeDeviceToken)
+);
+
+router.put(
+  '/auth/device-binding',
+  protect,
+  requireEmployee,
+  deviceBindingRules,
+  validate,
+  asyncHandler(authController.registerDeviceBinding)
 );
 
 router.use('/groups', protect, requireAdmin);

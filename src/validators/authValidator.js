@@ -43,9 +43,25 @@ const removeDeviceTokenRules = [
   body('token').trim().notEmpty().withMessage('Device token is required'),
 ];
 
+const deviceBindingRules = [
+  body('deviceId')
+    .trim()
+    .notEmpty()
+    .withMessage('deviceId is required')
+    .isLength({ max: 200 })
+    .withMessage('deviceId is too long'),
+  body('deviceName').optional().trim().isLength({ max: 200 }),
+  body('platform')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isIn(['ios', 'android', 'unknown'])
+    .withMessage('platform must be ios, android, or unknown'),
+];
+
 module.exports = {
   registerRules,
   loginRules,
   deviceTokenRules,
   removeDeviceTokenRules,
+  deviceBindingRules,
 };

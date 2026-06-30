@@ -3,6 +3,7 @@ const assert = require('node:assert');
 
 const {
   enforceDeviceBinding,
+  registerDeviceBinding,
 } = require('../src/services/deviceBindingService');
 
 // Minimal fake of a Mongoose user document for the parts the service touches.
@@ -105,4 +106,37 @@ test('same device refreshes changed metadata', async () => {
 
   assert.strictEqual(employee.boundDevice.deviceName, 'New Name');
   assert.strictEqual(employee.saveCalls, 1);
+});
+
+test('login registration binds when unbound', async () => {
+  const employee = makeEmployee();
+
+  const result = await registerDeviceBinding(employee, {
+    deviceId: 'device-A',
+    deviceName: 'Samsung S21',
+    platform: 'android',
+  });
+
+  assert.strictEqual(result.justRegistered, true);
+  assert.strictEqual(result.mismatch, false);
+  assert.strictEqual(employee.boundDevice.deviceId, 'device-A');
+});
+
+test('login registration reports mismatch without throwing', async () => {
+  const employee = makeEmployee({
+    deviceId: 'device-A',
+    deviceName: 'Samsung S21',
+    platform: 'android',
+    boundAt: new Date(),
+  });
+
+  const result = await registerDeviceBinding(employee, {
+    deviceId: 'device-B',
+    deviceName: 'iPhone 14',
+    platform: 'ios',
+  });
+
+  assert.strictEqual(result.mismatch, true);
+  assert.strictEqual(result.bound, false);
+  assert.strictEqual(employee.saveCalls, 0);
 });
