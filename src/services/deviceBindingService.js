@@ -3,16 +3,31 @@ const ApiError = require('../utils/ApiError');
 
 const normalizeDeviceId = (deviceId) => String(deviceId || '').trim().toLowerCase();
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const findConflictingDeviceOwner = async (deviceId, excludeUserId) => {
+  const normalizedId = normalizeDeviceId(deviceId);
+  if (!normalizedId) {
+    return null;
+  }
+
+  return User.findOne({
+    accountRole: 'employee',
+    _id: { $ne: excludeUserId },
+    'boundDevice.deviceId': {
+      $regex: new RegExp(`^${escapeRegex(normalizedId)}$`, 'i'),
+    },
+  }).select('name empNo boundDevice.deviceId');
+};
+
 /**
- * Enforces that an employee can only mark attendance from the single device
- * their account is bound to.
+ * Enforces one registered phone per employee AND one employee per phone.
  *
- * Behaviour (soft binding + HR reset):
- *  - First time an employee marks attendance, their current device is bound.
- *  - Afterwards every mark must come from the same device.
- *  - If a different device is used, the mark is rejected (403). Only an admin
- *    can clear the binding from the dashboard so the employee can re-bind on a
- *    new phone.
+ * Behaviour:
+ *  - First login binds the current device to the employee account.
+ *  - The same device cannot be bound to a second employee account.
+ *  - Afterwards the employee must keep using that same device.
+ *  - HR can reset device binding from the dashboard.
  *
  * `employee` is a Mongoose user document (already loaded by the caller).
  */
@@ -34,6 +49,19 @@ const enforceDeviceBinding = async (
   const boundId = normalizeDeviceId(bound.deviceId);
 
   if (!hasBinding) {
+    const conflictingOwner = await findConflictingDeviceOwner(
+      normalizedId,
+      employee._id
+    );
+
+    if (conflictingOwner) {
+      const ownerLabel = conflictingOwner.empNo || conflictingOwner._id;
+      throw new ApiError(
+        403,
+        `This phone is already registered to employee ${ownerLabel}. Each device can only be linked to one employee account. Contact HR.`
+      );
+    }
+
     employee.boundDevice = {
       deviceId: normalizedId,
       deviceName: String(deviceName || '').trim(),

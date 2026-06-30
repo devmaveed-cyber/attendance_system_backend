@@ -1,9 +1,20 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
+const User = require('../src/models/User');
 const {
   enforceDeviceBinding,
 } = require('../src/services/deviceBindingService');
+
+const mockFindOne = (result) => {
+  User.findOne = () => ({
+    select: async () => result,
+  });
+};
+
+test.beforeEach(() => {
+  mockFindOne(null);
+});
 
 // Minimal fake of a Mongoose user document for the parts the service touches.
 const makeEmployee = (boundDevice = undefined) => ({
@@ -124,4 +135,30 @@ test('same device refreshes changed metadata', async () => {
 
   assert.strictEqual(employee.boundDevice.deviceName, 'New Name');
   assert.strictEqual(employee.saveCalls, 1);
+});
+
+test('first bind rejects when device already belongs to another employee', async () => {
+  mockFindOne({
+    _id: '11366',
+    empNo: '11366',
+    name: 'Existing Employee',
+    boundDevice: { deviceId: 'ios_shared-device' },
+  });
+
+  const employee = makeEmployee();
+
+  await assert.rejects(
+    () =>
+      enforceDeviceBinding(employee, {
+        deviceId: 'ios_shared-device',
+        deviceName: 'iPhone',
+        platform: 'ios',
+      }),
+    (err) => {
+      assert.strictEqual(err.statusCode, 403);
+      assert.match(err.message, /already registered to employee 11366/i);
+      return true;
+    }
+  );
+  assert.strictEqual(employee.saveCalls, 0);
 });
