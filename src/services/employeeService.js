@@ -5,6 +5,7 @@ const { sanitizeEmployee } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
 const { parseOptionalDate } = require('../utils/employeeImportMapper');
 const { assertPhoneAvailable } = require('../utils/userPhone');
+const { normalizePhone } = require('../utils/phoneUtils');
 const branchService = require('./branchService');
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -190,7 +191,14 @@ const updateEmployee = async (employeeId, payload) => {
   }
 
   if (payload.phone !== undefined) {
-    employee.phone = await assertPhoneAvailable(payload.phone, employee._id);
+    const nextPhone = normalizePhone(payload.phone);
+    const currentPhone = normalizePhone(employee.phone);
+    // Only validate uniqueness when the phone number is actually changing.
+    // Re-checking an unchanged number can false-positive if another record
+    // shares a formatting variant of the same digits in the database.
+    if (nextPhone !== currentPhone) {
+      employee.phone = await assertPhoneAvailable(payload.phone, employee._id);
+    }
   }
 
   if (payload.isActive !== undefined) {
