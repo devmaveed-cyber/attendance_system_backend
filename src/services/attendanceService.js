@@ -258,6 +258,8 @@ const markSessionForEmployee = async (
       if (tagUid) {
         record.sessions[activeResult.index].checkOutNfcUid = tagUid;
       }
+      // Mark dirty so the subdocument mutation is detected by Mongoose.
+      record.markModified('sessions');
     } else if (record && record.checkInAt && !record.checkOutAt && (!record.sessions || record.sessions.length === 0)) {
       // Legacy record with open top-level check-in. Handle branch-switch or same-branch block.
       if (record.branchId === branch._id) {
@@ -351,6 +353,9 @@ const markSessionForEmployee = async (
   if (tagUid) {
     record.sessions[activeResult.index].checkOutNfcUid = tagUid;
   }
+  // Mongoose does not auto-detect mutations on subdocument array elements
+  // accessed via index notation — explicitly mark the path dirty so save() works.
+  record.markModified('sessions');
 
   await record.save();
   triggerDashboardDayRebuild(resolvedDateKey);
@@ -672,6 +677,7 @@ const correctAttendance = async (
       session.checkOutMethod = parsedCheckOut ? 'manual' : undefined;
     }
     existing.sessions[targetIdx] = session;
+    existing.markModified('sessions');
     Object.assign(existing, correctionMeta);
     await existing.save();
     triggerDashboardDayRebuild(resolvedDateKey);
