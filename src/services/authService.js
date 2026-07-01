@@ -201,12 +201,13 @@ const getProfile = async (userId) => {
   }
 
   const allowedSections = await resolveAllowedSections(user);
-  const assignedBranch = await resolveAssignedBranch(user);
+  const allowedBranches = await resolveAllowedBranches(user);
 
   return {
     user: sanitizeUser(user),
     allowedSections,
-    assignedBranch,
+    assignedBranch: allowedBranches[0] || null,
+    allowedBranches,
   };
 };
 

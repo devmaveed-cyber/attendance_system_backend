@@ -258,6 +258,32 @@ const markSessionForEmployee = async (
       if (tagUid) {
         record.sessions[activeResult.index].checkOutNfcUid = tagUid;
       }
+    } else if (record && record.checkInAt && !record.checkOutAt && (!record.sessions || record.sessions.length === 0)) {
+      // Legacy record with open top-level check-in. Handle branch-switch or same-branch block.
+      if (record.branchId === branch._id) {
+        throw new ApiError(400, `Already checked in at ${branch.name}. Check out first.`);
+      }
+      // Auto-close the legacy check-in by migrating it to a session.
+      const legacySession = {
+        sessionId: buildSessionId(employee._id, resolvedDateKey, 1),
+        branchId: record.branchId || branch._id,
+        branchName: record.branchName || branch.name,
+        checkInAt: record.checkInAt,
+        checkOutAt: now,
+        checkInLat: record.checkInLat,
+        checkInLng: record.checkInLng,
+        checkInAccuracy: record.checkInAccuracy,
+        checkInMethod: record.checkInMethod || 'nfc',
+        checkOutLat: markLat,
+        checkOutLng: markLng,
+        checkOutAccuracy: accuracy,
+        checkOutMethod: markMethod,
+        checkOutNfcUid: tagUid || undefined,
+      };
+      record.sessions.push(legacySession);
+      // Clear legacy top-level fields now that data lives in sessions.
+      record.checkInAt = undefined;
+      record.checkOutAt = undefined;
     }
 
     const sessionIndex = record ? record.sessions.length + 1 : 1;

@@ -24,9 +24,18 @@ const createEmployeeRules = [
     .withMessage('EMP number is required')
     .matches(EMP_NO_PATTERN)
     .withMessage('EMP number must be 4 to 10 digits'),
+  // branchId is required only when allowedBranchIds array is not provided.
   body('branchId')
+    .if((_value, { req }) => {
+      const ids = req.body?.allowedBranchIds;
+      return !Array.isArray(ids) || ids.length === 0;
+    })
     .matches(ID_PATTERN.BRANCH)
-    .withMessage('Valid branchId is required (format: BRN1234567)'),
+    .withMessage('Provide branchId (format: BRN1234567) or allowedBranchIds array'),
+  body('allowedBranchIds')
+    .optional()
+    .isArray()
+    .withMessage('allowedBranchIds must be an array'),
   phoneBodyRule('phone', { required: false }),
   body('department').optional().trim(),
   body('jobPosition').optional().trim(),
