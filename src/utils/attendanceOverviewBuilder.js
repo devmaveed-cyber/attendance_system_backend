@@ -311,8 +311,12 @@ const buildOverviewRows = async ({
       const rowBranchId = effective.branchId || employee.branchId || '';
       const rowBranchName = effective.branchName || employee.branchName || '';
 
-      if (normalizedBranchFilter && rowBranchId !== normalizedBranchFilter) {
-        return;
+      if (normalizedBranchFilter) {
+        // Match if the primary branch OR any session branch matches the filter.
+        const sessionBranchIds = record?.sessions?.map((s) => s.branchId) || [];
+        const allBranchIds = [rowBranchId, ...sessionBranchIds].filter(Boolean);
+        const matchesFilter = allBranchIds.includes(normalizedBranchFilter);
+        if (!matchesFilter) return;
       }
 
       const branch = branchMap.get(rowBranchId) || null;

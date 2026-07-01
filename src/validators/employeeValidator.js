@@ -82,6 +82,10 @@ const updateEmployeeRules = [
     .optional()
     .matches(ID_PATTERN.BRANCH)
     .withMessage('Invalid branch id format. Expected format: BRN1234567'),
+  body('allowedBranchIds')
+    .optional()
+    .isArray()
+    .withMessage('allowedBranchIds must be an array'),
   body('isActive')
     .optional()
     .isBoolean()

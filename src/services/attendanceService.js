@@ -7,7 +7,7 @@ const {
   formatDistance,
   isInsideBranchGeofence,
 } = require('../utils/geofence');
-const { sanitizeAttendanceRecord } = require('../utils/userPresenter');
+const { sanitizeAttendanceRecord, deriveRecordSummary } = require('../utils/userPresenter');
 const { buildPaginationMeta } = require('../utils/paginationUtils');
 const { MAX_ALLOWED_ACCURACY_METERS, ALLOW_PAST_DATE_ATTENDANCE } = require('../constants/attendanceConstants');
 const { evaluateShiftStatus } = require('../utils/shiftUtils');
@@ -282,8 +282,9 @@ const markSessionForEmployee = async (
       };
       record.sessions.push(legacySession);
       // Clear legacy top-level fields now that data lives in sessions.
-      record.checkInAt = undefined;
-      record.checkOutAt = undefined;
+      // Must use null (not undefined) so Mongoose marks the path dirty and saves the clear.
+      record.checkInAt = null;
+      record.checkOutAt = null;
     }
 
     const sessionIndex = record ? record.sessions.length + 1 : 1;
@@ -386,7 +387,12 @@ const getTodayRecord = async (requester, employeeId) => {
 
 const enrichAttendanceRecord = (record, branch) => {
   const sanitized = sanitizeAttendanceRecord(record);
-  const shift = evaluateShiftStatus(record, branch);
+  // For session-based records, top-level checkInAt may be null.
+  // Derive effective fields from sessions so shift evaluation uses the real check-in time.
+  const effectiveRecord = record.sessions?.length > 0
+    ? { ...record.toObject ? record.toObject() : record, ...deriveRecordSummary(record) }
+    : record;
+  const shift = evaluateShiftStatus(effectiveRecord, branch);
 
   return {
     ...sanitized,
