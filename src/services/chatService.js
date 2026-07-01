@@ -217,6 +217,12 @@ const sendMessage = async (user, conversationId, text, emit) => {
         text: trimmed,
         conversationId,
       })
+      .then((summary) => {
+        console.log(
+          `Chat push for employee ${conversation.employeeId}:`,
+          JSON.stringify(summary)
+        );
+      })
       .catch((error) => {
         console.error('Failed to send chat push notification:', error.message);
       });

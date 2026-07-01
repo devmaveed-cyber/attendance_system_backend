@@ -47,18 +47,99 @@ const loadBranchMap = async (branchIds) => {
   return new Map(branches.map((branch) => [branch._id, branch]));
 };
 
+// Derives the effective checkInAt/checkOutAt/branchId for a record.
+// New session-based records use sessions[]; legacy records use top-level fields.
+const deriveRecordEffectiveFields = (record) => {
+  if (!record) {
+    return { checkInAt: null, checkOutAt: null, branchId: null, branchName: null, checkInMethod: null, checkOutMethod: null };
+  }
+
+  const sessions = record.sessions;
+
+  if (sessions && sessions.length > 0) {
+    const firstSession = sessions[0];
+    const lastCompleted = [...sessions].reverse().find((s) => s.checkOutAt);
+
+    return {
+      checkInAt: firstSession.checkInAt,
+      checkOutAt: lastCompleted?.checkOutAt || null,
+      branchId: firstSession.branchId,
+      branchName: firstSession.branchName,
+      checkInMethod: firstSession.checkInMethod || null,
+      checkOutMethod: lastCompleted?.checkOutMethod || null,
+    };
+  }
+
+  return {
+    checkInAt: record.checkInAt || null,
+    checkOutAt: record.checkOutAt || null,
+    branchId: record.branchId || null,
+    branchName: record.branchName || null,
+    checkInMethod: record.checkInMethod || null,
+    checkOutMethod: record.checkOutMethod || null,
+  };
+};
+
+// Calculates total worked minutes across all completed sessions (or legacy checkIn/Out).
+const calcTotalWorkedMinutes = (record) => {
+  if (!record) return 0;
+
+  const sessions = record.sessions;
+
+  if (sessions && sessions.length > 0) {
+    return sessions.reduce((total, s) => {
+      if (s.checkInAt && s.checkOutAt) {
+        return total + Math.round((new Date(s.checkOutAt) - new Date(s.checkInAt)) / 60000);
+      }
+      return total;
+    }, 0);
+  }
+
+  if (record.checkInAt && record.checkOutAt) {
+    return Math.round((new Date(record.checkOutAt) - new Date(record.checkInAt)) / 60000);
+  }
+
+  return 0;
+};
+
 const buildOverviewRowFields = (record, branch) => {
-  const shift = evaluateShiftStatus(record, branch);
+  const effective = deriveRecordEffectiveFields(record);
+
+  // Build a proxy record with effective fields for shift evaluation.
+  const proxyRecord = record
+    ? { ...record.toObject ? record.toObject() : record, ...effective }
+    : null;
+
+  const shift = evaluateShiftStatus(proxyRecord, branch);
+
+  const sessionCount = record?.sessions?.length || 0;
+  const totalWorkedMinutes = calcTotalWorkedMinutes(record);
+
+  // Sanitize sessions for the row (lightweight — just key fields).
+  const sessions = sessionCount > 0
+    ? record.sessions.map((s) => ({
+        sessionId: s.sessionId,
+        branchId: s.branchId,
+        branchName: s.branchName,
+        checkInAt: s.checkInAt,
+        checkOutAt: s.checkOutAt || null,
+        checkInMethod: s.checkInMethod || null,
+        checkOutMethod: s.checkOutMethod || null,
+      }))
+    : [];
 
   return {
     recordId: record?.recordId || record?._id || null,
-    checkInAt: record?.checkInAt ?? null,
-    checkOutAt: record?.checkOutAt ?? null,
-    checkInMethod: record?.checkInMethod ?? null,
-    checkOutMethod: record?.checkOutMethod ?? null,
+    checkInAt: effective.checkInAt,
+    checkOutAt: effective.checkOutAt,
+    checkInMethod: effective.checkInMethod,
+    checkOutMethod: effective.checkOutMethod,
     isManualCorrected: Boolean(record?.correctedAt),
     correctedByName: record?.correctedByName ?? null,
     correctionReason: record?.correctionReason ?? null,
+    sessionCount,
+    totalWorkedMinutes,
+    sessions,
     status: shift.status,
     shiftStatus: shift.shiftStatus,
     isLateCheckIn: shift.isLateCheckIn,
@@ -212,8 +293,10 @@ const buildOverviewRows = async ({
 
   const branchIds = employees.map((employee) => employee.branchId).filter(Boolean);
   records.forEach((record) => {
-    if (record.branchId) {
-      branchIds.push(record.branchId);
+    if (record.branchId) branchIds.push(record.branchId);
+    // Include branch IDs from sessions.
+    if (record.sessions && record.sessions.length > 0) {
+      record.sessions.forEach((s) => { if (s.branchId) branchIds.push(s.branchId); });
     }
   });
   const branchMap = await loadBranchMap(branchIds);
@@ -224,8 +307,9 @@ const buildOverviewRows = async ({
   dateKeys.forEach((dateKey) => {
     employees.forEach((employee) => {
       const record = recordByUserAndDate.get(`${employee._id}_${dateKey}`);
-      const rowBranchId = record?.branchId || employee.branchId || '';
-      const rowBranchName = record?.branchName || employee.branchName || '';
+      const effective = deriveRecordEffectiveFields(record);
+      const rowBranchId = effective.branchId || employee.branchId || '';
+      const rowBranchName = effective.branchName || employee.branchName || '';
 
       if (normalizedBranchFilter && rowBranchId !== normalizedBranchFilter) {
         return;
@@ -260,4 +344,6 @@ module.exports = {
   buildOverviewSummary,
   aggregateDashboardDayStats,
   buildOverviewRows,
+  deriveRecordEffectiveFields,
+  calcTotalWorkedMinutes,
 };

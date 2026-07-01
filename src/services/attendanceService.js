@@ -24,6 +24,9 @@ const deviceBindingService = require('./deviceBindingService');
 
 const buildRecordId = (userId, dateKey) => `${userId}_${dateKey}`;
 
+const buildSessionId = (userId, dateKey, sessionIndex) =>
+  `${userId}_${dateKey}_${sessionIndex}`;
+
 const triggerDashboardDayRebuild = (dateKey) => {
   scheduleDayRebuild(dateKey);
 };
@@ -60,10 +63,25 @@ const resolveEmployee = async (userId) => {
   return employee;
 };
 
+// Returns the list of allowed branch IDs for an employee.
+// Falls back to single branchId for employees who haven't been updated yet.
+const resolveAllowedBranchIds = (employee) => {
+  if (employee.allowedBranchIds && employee.allowedBranchIds.length > 0) {
+    return employee.allowedBranchIds;
+  }
+
+  if (employee.branchId?.trim()) {
+    return [employee.branchId];
+  }
+
+  return [];
+};
+
 const resolveEmployeeForMarking = async (userId) => {
   const employee = await resolveEmployee(userId);
+  const allowed = resolveAllowedBranchIds(employee);
 
-  if (!employee.branchId?.trim()) {
+  if (allowed.length === 0) {
     throw new ApiError(
       400,
       'No branch assigned to your account. Ask your manager to assign one.'
@@ -105,100 +123,26 @@ const validateGeofence = ({ latitude, longitude, branch }) => {
   );
 };
 
-const markAttendanceForEmployee = async (
-  employeeId,
-  {
-    type,
-    latitude,
-    longitude,
-    accuracy,
-    skipGeofence = false,
-    branchOverride = null,
-    markMethod = 'gps',
-    tagUid = null,
-    dateKey = null,
+// Returns the last open session (checkInAt set, checkOutAt null), or null.
+const getActiveSession = (record) => {
+  if (!record || !record.sessions || record.sessions.length === 0) {
+    return null;
   }
-) => {
-  const employee = branchOverride
-    ? await resolveEmployee(employeeId)
-    : await resolveEmployeeForMarking(employeeId);
-  const branch =
-    branchOverride ?? (await branchService.resolveActiveBranch(employee.branchId));
 
-  if (!skipGeofence) {
-    if (latitude === undefined || longitude === undefined) {
-      throw new ApiError(400, 'latitude and longitude are required');
+  for (let i = record.sessions.length - 1; i >= 0; i--) {
+    if (record.sessions[i].checkInAt && !record.sessions[i].checkOutAt) {
+      return { session: record.sessions[i], index: i };
     }
-
-    if (
-      accuracy !== undefined &&
-      accuracy !== null &&
-      accuracy > MAX_ALLOWED_ACCURACY_METERS
-    ) {
-      throw new ApiError(
-        400,
-        `GPS accuracy is too low (${Math.round(accuracy)} m). Try again in open sky.`
-      );
-    }
-
-    validateGeofence({ latitude, longitude, branch });
   }
 
-  const markLat = latitude ?? branch.latitude;
-  const markLng = longitude ?? branch.longitude;
+  return null;
+};
 
-  const resolvedDateKey = resolveAttendanceDateKey(dateKey);
-  const recordId = buildRecordId(employee._id, resolvedDateKey);
-  const existing = await AttendanceRecord.findById(recordId);
-
-  if (type === 'checkIn') {
-    if (existing?.checkInAt) {
-      throw new ApiError(400, 'Employee has already checked in for this date');
-    }
-
-    const record = await AttendanceRecord.findByIdAndUpdate(
-      recordId,
-      {
-        recordId,
-        userId: employee._id,
-        userName: employee.name,
-        branchId: branch._id,
-        branchName: branch.name,
-        dateKey: resolvedDateKey,
-        checkInAt: new Date(),
-        checkInLat: markLat,
-        checkInLng: markLng,
-        checkInAccuracy: accuracy,
-        checkInMethod: markMethod,
-        checkInNfcUid: tagUid || undefined,
-      },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
-    );
-
-    triggerDashboardDayRebuild(resolvedDateKey);
-
-    return sanitizeAttendanceRecord(record);
-  }
-
-  if (!existing?.checkInAt) {
-    throw new ApiError(400, 'Check in first before checking out');
-  }
-
-  if (existing.checkOutAt) {
-    throw new ApiError(400, 'Employee has already checked out for this date');
-  }
-
-  existing.checkOutAt = new Date();
-  existing.checkOutLat = markLat;
-  existing.checkOutLng = markLng;
-  existing.checkOutAccuracy = accuracy;
-  existing.checkOutMethod = markMethod;
-  existing.checkOutNfcUid = tagUid || undefined;
-  await existing.save();
-
-  triggerDashboardDayRebuild(resolvedDateKey);
-
-  return sanitizeAttendanceRecord(existing);
+// Checks if a record has any attendance data (legacy or sessions).
+const recordHasAnyCheckIn = (record) => {
+  if (!record) return false;
+  if (record.sessions && record.sessions.length > 0) return true;
+  return Boolean(record.checkInAt);
 };
 
 const markAttendanceNfc = async (
@@ -244,36 +188,146 @@ const markAttendanceNfc = async (
     );
   }
 
-  const employee = await resolveEmployee(requester._id);
+  const employee = await resolveEmployeeForMarking(requester._id);
   await deviceBindingService.enforceDeviceBinding(employee, {
     deviceId,
     deviceName,
     platform,
   });
+
   const branch = await branchService.resolveActiveBranch(tag.branchId);
+
+  // Validate employee is allowed to use this branch.
+  const allowedBranchIds = resolveAllowedBranchIds(employee);
+  if (!allowedBranchIds.includes(branch._id)) {
+    throw new ApiError(
+      403,
+      `This branch (${branch.name}) is not in your assigned branches. Ask your manager to update your branch list.`
+    );
+  }
+
   validateGeofence({ latitude, longitude, branch });
 
-  const record = await markAttendanceForEmployee(requester._id, {
+  const resolvedDateKey = resolveAttendanceDateKey(dateKey);
+  const recordId = buildRecordId(employee._id, resolvedDateKey);
+
+  const record = await markSessionForEmployee(employee, branch, recordId, resolvedDateKey, {
     type,
     latitude,
     longitude,
     accuracy,
-    skipGeofence: true,
-    branchOverride: branch,
     markMethod: 'nfc',
     tagUid: tag.tagUid,
-    dateKey: resolveAttendanceDateKey(dateKey),
   });
-
-  if (type === 'checkIn' && employee.branchId !== branch._id) {
-    employee.branchId = branch._id;
-    employee.branchName = branch.name;
-    await employee.save();
-  }
 
   await nfcTagService.touchLastScanned(tag._id);
 
   return enrichAttendanceRecord(record, branch);
+};
+
+// Core session-based attendance marking.
+const markSessionForEmployee = async (
+  employee,
+  branch,
+  recordId,
+  resolvedDateKey,
+  { type, latitude, longitude, accuracy, markMethod, tagUid }
+) => {
+  const now = new Date();
+  const markLat = latitude ?? branch.latitude;
+  const markLng = longitude ?? branch.longitude;
+
+  let record = await AttendanceRecord.findById(recordId);
+
+  if (type === 'checkIn') {
+    const activeResult = getActiveSession(record);
+
+    if (activeResult) {
+      const activeSession = activeResult.session;
+
+      if (activeSession.branchId === branch._id) {
+        throw new ApiError(400, `Already checked in at ${branch.name}. Check out first.`);
+      }
+
+      // Auto-close the open session at a different branch.
+      record.sessions[activeResult.index].checkOutAt = now;
+      record.sessions[activeResult.index].checkOutLat = markLat;
+      record.sessions[activeResult.index].checkOutLng = markLng;
+      record.sessions[activeResult.index].checkOutAccuracy = accuracy;
+      record.sessions[activeResult.index].checkOutMethod = markMethod;
+      if (tagUid) {
+        record.sessions[activeResult.index].checkOutNfcUid = tagUid;
+      }
+    }
+
+    const sessionIndex = record ? record.sessions.length + 1 : 1;
+    const newSession = {
+      sessionId: buildSessionId(employee._id, resolvedDateKey, sessionIndex),
+      branchId: branch._id,
+      branchName: branch.name,
+      checkInAt: now,
+      checkInLat: markLat,
+      checkInLng: markLng,
+      checkInAccuracy: accuracy,
+      checkInMethod: markMethod,
+      checkInNfcUid: tagUid || undefined,
+    };
+
+    if (record) {
+      record.sessions.push(newSession);
+      await record.save();
+    } else {
+      record = await AttendanceRecord.findByIdAndUpdate(
+        recordId,
+        {
+          recordId,
+          userId: employee._id,
+          userName: employee.name,
+          branchId: branch._id,
+          branchName: branch.name,
+          dateKey: resolvedDateKey,
+          sessions: [newSession],
+        },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    triggerDashboardDayRebuild(resolvedDateKey);
+    return sanitizeAttendanceRecord(record);
+  }
+
+  // type === 'checkOut'
+  const activeResult = getActiveSession(record);
+
+  // Handle legacy records (no sessions array).
+  if (!activeResult && record && record.checkInAt && !record.checkOutAt) {
+    record.checkOutAt = now;
+    record.checkOutLat = markLat;
+    record.checkOutLng = markLng;
+    record.checkOutAccuracy = accuracy;
+    record.checkOutMethod = markMethod;
+    record.checkOutNfcUid = tagUid || undefined;
+    await record.save();
+    triggerDashboardDayRebuild(resolvedDateKey);
+    return sanitizeAttendanceRecord(record);
+  }
+
+  if (!activeResult) {
+    throw new ApiError(400, 'Check in first before checking out');
+  }
+
+  record.sessions[activeResult.index].checkOutAt = now;
+  record.sessions[activeResult.index].checkOutLat = markLat;
+  record.sessions[activeResult.index].checkOutLng = markLng;
+  record.sessions[activeResult.index].checkOutAccuracy = accuracy;
+  record.sessions[activeResult.index].checkOutMethod = markMethod;
+  if (tagUid) {
+    record.sessions[activeResult.index].checkOutNfcUid = tagUid;
+  }
+
+  await record.save();
+  triggerDashboardDayRebuild(resolvedDateKey);
+  return sanitizeAttendanceRecord(record);
 };
 
 const getTodayRecord = async (requester, employeeId) => {
@@ -296,7 +350,11 @@ const getTodayRecord = async (requester, employeeId) => {
     return null;
   }
 
-  const branch = await Branch.findById(record.branchId || employee.branchId);
+  // For shift evaluation use the first session's branch (or legacy branchId).
+  const primaryBranchId = record.sessions?.length > 0
+    ? record.sessions[0].branchId
+    : (record.branchId || employee.branchId);
+  const branch = await Branch.findById(primaryBranchId);
   return enrichAttendanceRecord(record, branch);
 };
 
@@ -339,13 +397,6 @@ const resolveAdminEmployee = async (employeeId) => {
 
   if (!employee || employee.accountRole !== 'employee') {
     throw new ApiError(404, 'Employee not found');
-  }
-
-  if (!employee.branchId?.trim()) {
-    throw new ApiError(
-      400,
-      'Employee has no branch assigned. Assign a branch before correcting attendance.'
-    );
   }
 
   return employee;
@@ -442,9 +493,12 @@ const getOverview = async (
   };
 };
 
+// Correct or add a session for an employee (admin only).
+// sessionIndex: 0-based index. If not provided, corrects the first/only session.
+// To add a new manual session, pass sessionIndex = -1 or omit with addNew: true.
 const correctAttendance = async (
   admin,
-  { employeeId, dateKey, checkInAt, checkOutAt, reason }
+  { employeeId, dateKey, checkInAt, checkOutAt, reason, sessionIndex, branchId: overrideBranchId, addNewSession }
 ) => {
   if (admin.accountRole !== 'admin') {
     throw new ApiError(403, 'Admin access required');
@@ -456,7 +510,6 @@ const correctAttendance = async (
   }
 
   const employee = await resolveAdminEmployee(employeeId);
-  const branch = await branchService.resolveActiveBranch(employee.branchId);
   const resolvedDateKey = resolveAttendanceDateKey(dateKey);
   const recordId = buildRecordId(employee._id, resolvedDateKey);
   const existing = await AttendanceRecord.findById(recordId);
@@ -478,14 +531,106 @@ const correctAttendance = async (
     );
   }
 
+  if (parsedCheckIn && parsedCheckOut && parsedCheckOut <= parsedCheckIn) {
+    throw new ApiError(400, 'checkOutAt must be after checkInAt');
+  }
+
+  // Determine which branch to use for this correction.
+  let branch = null;
+  const branchIdToUse = overrideBranchId?.trim() || employee.branchId?.trim();
+  if (branchIdToUse) {
+    try {
+      branch = await branchService.resolveActiveBranch(branchIdToUse);
+    } catch {
+      // Branch lookup failed — proceed without branch for manual corrections.
+    }
+  }
+
+  const correctionMeta = {
+    correctedBy: admin._id,
+    correctedByName: admin.name,
+    correctionReason: trimmedReason,
+    correctedAt: new Date(),
+  };
+
+  // Case: adding a brand new session manually.
+  if (addNewSession) {
+    if (!parsedCheckIn) {
+      throw new ApiError(400, 'checkInAt is required when adding a new session');
+    }
+
+    const sessionBranch = branch || { _id: branchIdToUse || 'manual', name: 'Manual' };
+    const newSession = {
+      sessionId: buildSessionId(
+        employee._id,
+        resolvedDateKey,
+        (existing?.sessions?.length || 0) + 1
+      ),
+      branchId: sessionBranch._id,
+      branchName: sessionBranch.name,
+      checkInAt: parsedCheckIn,
+      checkOutAt: parsedCheckOut || undefined,
+      checkInMethod: 'manual',
+      checkOutMethod: parsedCheckOut ? 'manual' : undefined,
+    };
+
+    if (existing) {
+      existing.sessions.push(newSession);
+      Object.assign(existing, correctionMeta);
+      await existing.save();
+      triggerDashboardDayRebuild(resolvedDateKey);
+      return enrichAttendanceRecord(existing, branch);
+    }
+
+    const record = await AttendanceRecord.findByIdAndUpdate(
+      recordId,
+      {
+        recordId,
+        userId: employee._id,
+        userName: employee.name,
+        branchId: sessionBranch._id,
+        branchName: sessionBranch.name,
+        dateKey: resolvedDateKey,
+        sessions: [newSession],
+        ...correctionMeta,
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    triggerDashboardDayRebuild(resolvedDateKey);
+    return enrichAttendanceRecord(record, branch);
+  }
+
+  // Correct an existing record.
+  // If existing record uses sessions, correct that specific session.
+  if (existing && existing.sessions && existing.sessions.length > 0) {
+    const targetIdx = sessionIndex !== undefined ? Number(sessionIndex) : 0;
+
+    if (targetIdx < 0 || targetIdx >= existing.sessions.length) {
+      throw new ApiError(400, `Session index ${targetIdx} does not exist`);
+    }
+
+    const session = existing.sessions[targetIdx];
+    if (parsedCheckIn !== undefined) {
+      session.checkInAt = parsedCheckIn;
+      session.checkInMethod = 'manual';
+    }
+    if (parsedCheckOut !== undefined) {
+      session.checkOutAt = parsedCheckOut;
+      session.checkOutMethod = parsedCheckOut ? 'manual' : undefined;
+    }
+    existing.sessions[targetIdx] = session;
+    Object.assign(existing, correctionMeta);
+    await existing.save();
+    triggerDashboardDayRebuild(resolvedDateKey);
+    return enrichAttendanceRecord(existing, branch);
+  }
+
+  // Legacy record correction (no sessions array).
   const finalCheckIn =
     parsedCheckIn !== undefined ? parsedCheckIn : existing?.checkInAt ?? null;
   const finalCheckOut =
     parsedCheckOut !== undefined ? parsedCheckOut : existing?.checkOutAt ?? null;
-
-  if (finalCheckIn && finalCheckOut && finalCheckOut <= finalCheckIn) {
-    throw new ApiError(400, 'checkOutAt must be after checkInAt');
-  }
 
   if (!finalCheckIn && finalCheckOut) {
     throw new ApiError(400, 'checkInAt is required before setting checkOutAt');
@@ -499,39 +644,26 @@ const correctAttendance = async (
     return null;
   }
 
+  const sessionBranch = branch || { _id: employee.branchId || 'manual', name: employee.branchName || 'Manual' };
+
   const update = {
     recordId,
     userId: employee._id,
     userName: employee.name,
-    branchId: branch._id,
-    branchName: branch.name,
+    branchId: sessionBranch._id,
+    branchName: sessionBranch.name,
     dateKey: resolvedDateKey,
-    correctedBy: admin._id,
-    correctedByName: admin.name,
-    correctionReason: trimmedReason,
-    correctedAt: new Date(),
+    ...correctionMeta,
   };
 
   if (parsedCheckIn !== undefined) {
     update.checkInAt = parsedCheckIn;
     update.checkInMethod = parsedCheckIn ? 'manual' : undefined;
-    if (parsedCheckIn) {
-      update.checkInLat = undefined;
-      update.checkInLng = undefined;
-      update.checkInAccuracy = undefined;
-      update.checkInNfcUid = undefined;
-    }
   }
 
   if (parsedCheckOut !== undefined) {
     update.checkOutAt = parsedCheckOut;
     update.checkOutMethod = parsedCheckOut ? 'manual' : undefined;
-    if (parsedCheckOut) {
-      update.checkOutLat = undefined;
-      update.checkOutLng = undefined;
-      update.checkOutAccuracy = undefined;
-      update.checkOutNfcUid = undefined;
-    }
   }
 
   const record = await AttendanceRecord.findByIdAndUpdate(
@@ -546,7 +678,6 @@ const correctAttendance = async (
   );
 
   triggerDashboardDayRebuild(resolvedDateKey);
-
   return enrichAttendanceRecord(record, branch);
 };
 
@@ -580,4 +711,7 @@ module.exports = {
   getOverview,
   correctAttendance,
   clearAttendance,
+  resolveAllowedBranchIds,
+  getActiveSession,
+  recordHasAnyCheckIn,
 };

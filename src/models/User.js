@@ -131,6 +131,10 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    allowedBranchIds: {
+      type: [String],
+      default: [],
+    },
     fcmTokens: {
       type: [
         {

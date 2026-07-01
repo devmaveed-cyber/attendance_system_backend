@@ -7,6 +7,7 @@ const sanitizeUser = (user) => ({
   groupName: user.groupName,
   branchId: user.branchId,
   branchName: user.branchName,
+  allowedBranchIds: user.allowedBranchIds || [],
   empNo: user.empNo || '',
   department: user.department || '',
   jobPosition: user.jobPosition || '',
@@ -79,33 +80,87 @@ const sanitizeNfcTag = (tag) => ({
   updatedAt: tag.updatedAt,
 });
 
-const sanitizeAttendanceRecord = (record) => ({
-  recordId: record.recordId || record._id,
-  userId: record.userId,
-  userName: record.userName,
-  branchId: record.branchId,
-  branchName: record.branchName,
-  dateKey: record.dateKey,
-  checkInAt: record.checkInAt,
-  checkOutAt: record.checkOutAt,
-  checkInLat: record.checkInLat,
-  checkInLng: record.checkInLng,
-  checkInAccuracy: record.checkInAccuracy,
-  checkOutLat: record.checkOutLat,
-  checkOutLng: record.checkOutLng,
-  checkOutAccuracy: record.checkOutAccuracy,
-  checkInMethod: record.checkInMethod,
-  checkInNfcUid: record.checkInNfcUid,
-  checkOutMethod: record.checkOutMethod,
-  checkOutNfcUid: record.checkOutNfcUid,
-  correctedBy: record.correctedBy,
-  correctedByName: record.correctedByName,
-  correctionReason: record.correctionReason,
-  correctedAt: record.correctedAt,
-  isManualCorrected: Boolean(record.correctedAt),
-  createdAt: record.createdAt,
-  updatedAt: record.updatedAt,
+const sanitizeAttendanceSession = (session) => ({
+  sessionId: session.sessionId,
+  branchId: session.branchId,
+  branchName: session.branchName,
+  checkInAt: session.checkInAt,
+  checkOutAt: session.checkOutAt || null,
+  checkInLat: session.checkInLat,
+  checkInLng: session.checkInLng,
+  checkInAccuracy: session.checkInAccuracy,
+  checkOutLat: session.checkOutLat,
+  checkOutLng: session.checkOutLng,
+  checkOutAccuracy: session.checkOutAccuracy,
+  checkInMethod: session.checkInMethod,
+  checkInNfcUid: session.checkInNfcUid,
+  checkOutMethod: session.checkOutMethod,
+  checkOutNfcUid: session.checkOutNfcUid,
 });
+
+// Derives the effective checkInAt/checkOutAt/branchId from a record for backward compat.
+// For new session-based records these come from the sessions array.
+const deriveRecordSummary = (record) => {
+  const sessions = record.sessions;
+
+  if (!sessions || sessions.length === 0) {
+    return {
+      checkInAt: record.checkInAt,
+      checkOutAt: record.checkOutAt,
+      branchId: record.branchId,
+      branchName: record.branchName,
+      checkInMethod: record.checkInMethod,
+      checkOutMethod: record.checkOutMethod,
+    };
+  }
+
+  const firstSession = sessions[0];
+  const lastCompleted = [...sessions].reverse().find((s) => s.checkOutAt);
+
+  return {
+    checkInAt: firstSession.checkInAt,
+    checkOutAt: lastCompleted?.checkOutAt || null,
+    branchId: firstSession.branchId,
+    branchName: firstSession.branchName,
+    checkInMethod: firstSession.checkInMethod,
+    checkOutMethod: lastCompleted?.checkOutMethod || null,
+  };
+};
+
+const sanitizeAttendanceRecord = (record) => {
+  const summary = deriveRecordSummary(record);
+
+  return {
+    recordId: record.recordId || record._id,
+    userId: record.userId,
+    userName: record.userName,
+    branchId: summary.branchId,
+    branchName: summary.branchName,
+    dateKey: record.dateKey,
+    checkInAt: summary.checkInAt,
+    checkOutAt: summary.checkOutAt,
+    checkInLat: record.checkInLat,
+    checkInLng: record.checkInLng,
+    checkInAccuracy: record.checkInAccuracy,
+    checkOutLat: record.checkOutLat,
+    checkOutLng: record.checkOutLng,
+    checkOutAccuracy: record.checkOutAccuracy,
+    checkInMethod: summary.checkInMethod,
+    checkInNfcUid: record.checkInNfcUid,
+    checkOutMethod: summary.checkOutMethod,
+    checkOutNfcUid: record.checkOutNfcUid,
+    correctedBy: record.correctedBy,
+    correctedByName: record.correctedByName,
+    correctionReason: record.correctionReason,
+    correctedAt: record.correctedAt,
+    isManualCorrected: Boolean(record.correctedAt),
+    sessions: Array.isArray(record.sessions)
+      ? record.sessions.map(sanitizeAttendanceSession)
+      : [],
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+};
 
 module.exports = {
   sanitizeUser,
@@ -114,4 +169,6 @@ module.exports = {
   sanitizeBranch,
   sanitizeNfcTag,
   sanitizeAttendanceRecord,
+  sanitizeAttendanceSession,
+  deriveRecordSummary,
 };

@@ -96,7 +96,33 @@ const createEmployee = async (payload) => {
     throw new ApiError(409, 'An employee with this EMP number already exists');
   }
 
-  const branch = await branchService.resolveActiveBranch(branchId);
+  // allowedBranchIds can be sent as an array; branchId is backward-compat fallback.
+  const allowedBranchIdsRaw = payload.allowedBranchIds;
+  let resolvedAllowedBranchIds = [];
+  let primaryBranch = null;
+
+  if (Array.isArray(allowedBranchIdsRaw) && allowedBranchIdsRaw.length > 0) {
+    for (const bid of allowedBranchIdsRaw) {
+      try {
+        const b = await branchService.resolveActiveBranch(bid);
+        resolvedAllowedBranchIds.push(b._id);
+        if (!primaryBranch) primaryBranch = b;
+      } catch { /* skip invalid */ }
+    }
+  }
+
+  // Also handle single branchId for backward compat.
+  if (!primaryBranch && branchId) {
+    primaryBranch = await branchService.resolveActiveBranch(branchId);
+    if (!resolvedAllowedBranchIds.includes(primaryBranch._id)) {
+      resolvedAllowedBranchIds = [primaryBranch._id];
+    }
+  }
+
+  if (!primaryBranch) {
+    throw new ApiError(400, 'At least one valid branch is required');
+  }
+
   const normalizedPhone = await assertPhoneAvailable(phone);
 
   const employee = await User.create({
@@ -107,8 +133,9 @@ const createEmployee = async (payload) => {
     empNo: normalizedEmpNo,
     groupId: '',
     groupName: '',
-    branchId: branch._id,
-    branchName: branch.name,
+    branchId: primaryBranch._id,
+    branchName: primaryBranch.name,
+    allowedBranchIds: resolvedAllowedBranchIds,
     accountRole: 'employee',
   });
 
@@ -170,10 +197,34 @@ const updateEmployee = async (employeeId, payload) => {
     employee.isActive = payload.isActive;
   }
 
-  if (payload.branchId !== undefined) {
+  if (payload.allowedBranchIds !== undefined) {
+    const resolved = [];
+    let primary = null;
+
+    if (Array.isArray(payload.allowedBranchIds) && payload.allowedBranchIds.length > 0) {
+      for (const bid of payload.allowedBranchIds) {
+        try {
+          const b = await branchService.resolveActiveBranch(bid);
+          resolved.push(b._id);
+          if (!primary) primary = b;
+        } catch { /* skip */ }
+      }
+    }
+
+    employee.allowedBranchIds = resolved;
+
+    if (primary) {
+      employee.branchId = primary._id;
+      employee.branchName = primary.name;
+    }
+  } else if (payload.branchId !== undefined) {
     const branch = await branchService.resolveActiveBranch(payload.branchId);
     employee.branchId = branch._id;
     employee.branchName = branch.name;
+    // Keep single branch in allowedBranchIds list too.
+    if (!employee.allowedBranchIds?.includes(branch._id)) {
+      employee.allowedBranchIds = [branch._id];
+    }
   }
 
   if (payload.password !== undefined) {

@@ -33,42 +33,64 @@ const resolveAllowedSections = async (user) => {
   return group.sections.filter((section) => APP_SECTIONS.includes(section));
 };
 
-const resolveAssignedBranch = async (user) => {
-  if (user.accountRole !== 'employee' || !user.branchId?.trim()) {
-    return null;
+const formatBranchGeofence = (branch) => ({
+  branchId: branch._id,
+  name: branch.name,
+  latitude: branch.latitude,
+  longitude: branch.longitude,
+  radiusMeters: branch.radiusMeters,
+  geofenceType: branch.geofenceType || 'circle',
+  boundaryPoints: Array.isArray(branch.boundaryPoints)
+    ? branch.boundaryPoints.map((point) => ({
+        lat: point.lat,
+        lng: point.lng,
+      }))
+    : [],
+});
+
+// Returns all allowed branches with full geofence data for mobile NFC validation.
+const resolveAllowedBranches = async (user) => {
+  if (user.accountRole !== 'employee') {
+    return [];
   }
 
-  try {
-    const branch = await branchService.resolveActiveBranch(user.branchId);
-    return {
-      branchId: branch._id,
-      name: branch.name,
-      latitude: branch.latitude,
-      longitude: branch.longitude,
-      radiusMeters: branch.radiusMeters,
-      geofenceType: branch.geofenceType || 'circle',
-      boundaryPoints: Array.isArray(branch.boundaryPoints)
-        ? branch.boundaryPoints.map((point) => ({
-            lat: point.lat,
-            lng: point.lng,
-          }))
-        : [],
-    };
-  } catch {
-    return null;
+  // Collect all branch IDs: allowedBranchIds takes priority, fall back to single branchId.
+  const branchIds =
+    user.allowedBranchIds && user.allowedBranchIds.length > 0
+      ? user.allowedBranchIds
+      : user.branchId?.trim()
+      ? [user.branchId]
+      : [];
+
+  if (branchIds.length === 0) {
+    return [];
   }
+
+  const results = [];
+  for (const id of branchIds) {
+    try {
+      const branch = await branchService.resolveActiveBranch(id);
+      results.push(formatBranchGeofence(branch));
+    } catch {
+      // Skip missing/inactive branches silently.
+    }
+  }
+
+  return results;
 };
 
 const buildAuthPayload = async (user) => {
   const token = signToken(user._id);
   const allowedSections = await resolveAllowedSections(user);
-  const assignedBranch = await resolveAssignedBranch(user);
+  const allowedBranches = await resolveAllowedBranches(user);
 
   return {
     user: sanitizeUser(user),
     token,
     allowedSections,
-    assignedBranch,
+    // Keep assignedBranch pointing to first allowed branch for old app versions.
+    assignedBranch: allowedBranches[0] || null,
+    allowedBranches,
   };
 };
 
