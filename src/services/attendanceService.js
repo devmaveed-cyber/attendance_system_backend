@@ -568,8 +568,20 @@ const correctAttendance = async (
   }
 
   // Determine which branch to use for this correction.
+  // Priority: explicit override → target session's own branch → employee primary branch.
   let branch = null;
-  const branchIdToUse = overrideBranchId?.trim() || employee.branchId?.trim();
+  const resolveTargetSessionBranchId = () => {
+    if (!existing?.sessions?.length) return null;
+    const idx = sessionIndex !== undefined ? Number(sessionIndex) : 0;
+    if (Number.isInteger(idx) && idx >= 0 && idx < existing.sessions.length) {
+      return existing.sessions[idx].branchId;
+    }
+    return null;
+  };
+  const branchIdToUse =
+    overrideBranchId?.trim() ||
+    resolveTargetSessionBranchId() ||
+    employee.branchId?.trim();
   if (branchIdToUse) {
     try {
       branch = await branchService.resolveActiveBranch(branchIdToUse);
@@ -638,8 +650,8 @@ const correctAttendance = async (
   if (existing && existing.sessions && existing.sessions.length > 0) {
     const targetIdx = sessionIndex !== undefined ? Number(sessionIndex) : 0;
 
-    if (targetIdx < 0 || targetIdx >= existing.sessions.length) {
-      throw new ApiError(400, `Session index ${targetIdx} does not exist`);
+    if (!Number.isInteger(targetIdx) || targetIdx < 0 || targetIdx >= existing.sessions.length) {
+      throw new ApiError(400, `Session index ${targetIdx} is out of range (record has ${existing.sessions.length} session(s))`);
     }
 
     const session = existing.sessions[targetIdx];

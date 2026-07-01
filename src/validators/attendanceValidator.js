@@ -112,6 +112,18 @@ const correctAttendanceRules = [
     .withMessage('Correction reason is required')
     .isLength({ min: 3, max: 500 })
     .withMessage('Reason must be between 3 and 500 characters'),
+  body('sessionIndex')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('sessionIndex must be a non-negative integer'),
+  body('addNewSession')
+    .optional()
+    .isBoolean()
+    .withMessage('addNewSession must be a boolean'),
+  body('branchId')
+    .optional()
+    .matches(ID_PATTERN.BRANCH)
+    .withMessage('Invalid branchId format. Expected format: BRN1234567'),
   body().custom((_, { req }) => {
     if (
       req.body.checkInAt === undefined &&
