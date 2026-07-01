@@ -500,10 +500,18 @@ const getOverview = async (
         matchesOverviewStatusFilter(row, normalizedStatusFilter)
       )
     : rows;
+
+  // Sort descending (most recent day first) so pagination always returns newest.
+  const sortedRows = [...filteredRows].sort((a, b) => (b.dateKey > a.dateKey ? 1 : -1));
+
+  // When a single employee fetches their own history, allow up to 400 rows
+  // so a full year fits in one call. All other callers stay capped at 100.
+  const isSingleEmployee = !!restrictToEmployeeId;
+  const maxLimit = isSingleEmployee ? 400 : 100;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
-  const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 25));
+  const safeLimit = Math.min(maxLimit, Math.max(1, Number.parseInt(limit, 10) || 25));
   const skip = (safePage - 1) * safeLimit;
-  const paginatedRows = filteredRows.slice(skip, skip + safeLimit);
+  const paginatedRows = sortedRows.slice(skip, skip + safeLimit);
 
   return {
     startDate: start,

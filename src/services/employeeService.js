@@ -207,11 +207,24 @@ const updateEmployee = async (employeeId, payload) => {
           const b = await branchService.resolveActiveBranch(bid);
           resolved.push(b._id);
           if (!primary) primary = b;
-        } catch { /* skip */ }
+        } catch { /* skip invalid/inactive branch id */ }
       }
+
+      // Reject if every supplied ID was invalid — do not silently clear branches.
+      if (resolved.length === 0) {
+        throw new ApiError(
+          400,
+          'None of the provided allowedBranchIds are valid or active. At least one valid branch is required.'
+        );
+      }
+    } else if (Array.isArray(payload.allowedBranchIds) && payload.allowedBranchIds.length === 0) {
+      // Explicitly passing empty array — treat same as removing all branches, block it.
+      throw new ApiError(400, 'allowedBranchIds cannot be empty. Assign at least one branch.');
     }
 
-    employee.allowedBranchIds = resolved;
+    if (resolved.length > 0) {
+      employee.allowedBranchIds = resolved;
+    }
 
     if (primary) {
       employee.branchId = primary._id;
